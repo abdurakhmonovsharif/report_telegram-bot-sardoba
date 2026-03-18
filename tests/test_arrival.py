@@ -185,6 +185,10 @@ class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("⚠️ <b>Номенклатура:</b>\n• ширбоз — 15,2 × 140 000\n• рулет — 3 × 95 000", caption)
         self.assertIn("🚚 <b>Поставщик:</b> бобо", caption)
         self.assertIn("📷 <b>Фото:</b> нет", caption)
+        self.assertLess(
+            caption.index("🚚 <b>Поставщик:</b> бобо"),
+            caption.index("⚠️ <b>Номенклатура:</b>"),
+        )
 
     def test_report_sender_caption_lists_transfer_header(self) -> None:
         sender = ReportSender(bot=SimpleNamespace(), settings=SimpleNamespace(), db=SimpleNamespace())

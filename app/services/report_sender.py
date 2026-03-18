@@ -139,8 +139,12 @@ class ReportSender:
             self._format_detail_line("📆", "Дата", display_date),
             self._format_detail_line("📍", "Филиал", request_record.get("branch")),
             self._format_detail_line("♻️", "На склад", request_record.get("warehouse")),
-            "",
         ]
+
+        if request_record.get("supplier_name"):
+            lines.append(self._format_detail_line("🚚", "Поставщик", request_record["supplier_name"]))
+
+        lines.append("")
 
         if line_items:
             lines.append("⚠️ <b>Номенклатура:</b>")
@@ -150,14 +154,13 @@ class ReportSender:
                 self._format_detail_line("⚠️", "Номенклатура", self._format_nomenclature(request_record))
             )
 
-        if request_record.get("supplier_name"):
-            lines.append("")
-            lines.append(self._format_detail_line("🚚", "Поставщик", request_record["supplier_name"]))
-
         if request_record.get("comment"):
+            lines.append("")
             lines.append(self._format_detail_line("💬", "Комментарий", request_record["comment"]))
 
         if request_record.get("info_text"):
+            if not request_record.get("comment"):
+                lines.append("")
             lines.append(self._format_detail_line("ℹ️", "Доп. инфо", request_record["info_text"]))
 
         lines.extend(
