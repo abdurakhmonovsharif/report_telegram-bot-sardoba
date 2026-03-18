@@ -21,6 +21,30 @@ def _json_dumps(payload: dict[str, Any] | None) -> str:
     return json.dumps(payload or {}, ensure_ascii=False, default=str)
 
 
+def _normalize_request_line_items(line_items: list[dict[str, Any]] | None) -> list[dict[str, str]]:
+    normalized_items: list[dict[str, str]] = []
+    for raw_item in line_items or []:
+        if not isinstance(raw_item, dict):
+            continue
+
+        product_name = str(raw_item.get("product_name") or "").strip()
+        quantity = str(raw_item.get("quantity") or "").strip()
+        unit_price = str(raw_item.get("unit_price") or "").strip()
+
+        if not product_name or not quantity:
+            continue
+
+        item = {
+            "product_name": product_name,
+            "quantity": quantity,
+        }
+        if unit_price:
+            item["unit_price"] = unit_price
+        normalized_items.append(item)
+
+    return normalized_items
+
+
 def _request_code(*, operation_type: str, request_id: int, created_at: datetime | None) -> str:
     prefix = "PRI" if operation_type == "arrival" else "PER"
     ts = (created_at or datetime.now(timezone.utc)).strftime("%Y%m%d")
@@ -584,10 +608,26 @@ class Database:
         info_text: str | None = None,
         product_name: str | None = None,
         quantity: str | None = None,
+        line_items: list[dict[str, Any]] | None = None,
         notification_status: str = "sent",
         photos: list[str | dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         pool = self._require_pool()
+        normalized_line_items = _normalize_request_line_items(line_items)
+        normalized_product_name = (product_name or "").strip() or None
+        normalized_quantity = (quantity or "").strip() or None
+
+        if not normalized_line_items and operation_type == "arrival" and normalized_product_name and normalized_quantity:
+            normalized_line_items = [
+                {
+                    "product_name": normalized_product_name,
+                    "quantity": normalized_quantity,
+                }
+            ]
+
+        if normalized_line_items:
+            normalized_product_name = normalized_product_name or normalized_line_items[0]["product_name"]
+            normalized_quantity = normalized_quantity or normalized_line_items[0]["quantity"]
 
         async with pool.acquire() as connection:
             async with connection.transaction():
@@ -616,6 +656,7 @@ class Database:
                         info_text,
                         product_name,
                         quantity,
+                        line_items,
                         status,
                         notification_status,
                         source,
@@ -627,7 +668,7 @@ class Database:
                     VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-                        $21, $22, 'completed', $23, 'bot', NOW(), $24, NOW(), NOW()
+                        $21, $22, $23, 'completed', $24, 'bot', NOW(), $25, NOW(), NOW()
                     )
                     RETURNING *
                     """,
@@ -651,8 +692,9 @@ class Database:
                     comment,
                     category,
                     info_text,
-                    product_name,
-                    quantity,
+                    normalized_product_name,
+                    normalized_quantity,
+                    json.dumps(normalized_line_items, ensure_ascii=False),
                     notification_status,
                     user_id,
                 )
@@ -799,6 +841,7 @@ class Database:
                 r.supplier_name,
                 r.date,
                 r.comment,
+                r.line_items,
                 r.created_at,
                 r.user_id,
                 u.telegram_id AS user_telegram_id,
@@ -824,7 +867,15 @@ class Database:
 
         params.extend([limit, offset])
         query += f" LIMIT ${len(params) - 1} OFFSET ${len(params)}"
-        return await self.fetch(query, *params)
+        rows = await self.fetch(query, *params)
+        for row in rows:
+            line_items = row.get("line_items")
+            if isinstance(line_items, str):
+                try:
+                    row["line_items"] = json.loads(line_items)
+                except json.JSONDecodeError:
+                    row["line_items"] = []
+        return rows
 
     async def list_logs(
         self,

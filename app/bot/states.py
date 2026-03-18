@@ -10,6 +10,8 @@ class ArrivalStates(StatesGroup):
     selecting_warehouse = State()
     waiting_product_name = State()
     waiting_quantity = State()
+    waiting_unit_price = State()
+    confirming_items = State()
     collecting_photos = State()
     manual_input = State()
     waiting_supplier = State()

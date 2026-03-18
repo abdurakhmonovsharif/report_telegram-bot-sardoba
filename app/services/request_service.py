@@ -45,6 +45,7 @@ class RequestService:
         info_text: str | None = None,
         product_name: str | None = None,
         quantity: str | None = None,
+        line_items: list[dict] | None = None,
         photos: list[str | dict] | None = None,
     ) -> dict:
         try:
@@ -73,6 +74,7 @@ class RequestService:
                 info_text=info_text,
                 product_name=product_name,
                 quantity=quantity,
+                line_items=line_items,
                 notification_status="failed",
                 photos=photos or [],
             )
@@ -139,6 +141,7 @@ class RequestService:
                 "source_warehouse": source_warehouse,
                 "product_name": product_name,
                 "quantity": quantity,
+                "line_items": line_items or [],
             },
         )
 

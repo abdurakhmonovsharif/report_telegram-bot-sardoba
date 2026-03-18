@@ -30,6 +30,7 @@ class RequestOut(BaseModel):
     user_id: int
     user_telegram_id: int
     user_name: str
+    line_items: list[dict[str, str]] = Field(default_factory=list)
     photos: list[str] = Field(default_factory=list)
 
 

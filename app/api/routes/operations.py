@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -34,6 +35,57 @@ TRANSFER_TYPE_LABELS = {
     "warehouse": "Между складами",
     "branch": "Между филиалами",
 }
+
+
+def _extract_line_items(row: dict[str, Any]) -> list[dict[str, str]]:
+    raw_items = row.get("line_items") or []
+    if isinstance(raw_items, str):
+        try:
+            raw_items = json.loads(raw_items)
+        except json.JSONDecodeError:
+            raw_items = []
+
+    if not isinstance(raw_items, list):
+        return []
+
+    line_items: list[dict[str, str]] = []
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            continue
+
+        product_name = str(raw_item.get("product_name") or "").strip()
+        quantity = str(raw_item.get("quantity") or "").strip()
+        unit_price = str(raw_item.get("unit_price") or "").strip()
+        if not product_name or not quantity:
+            continue
+
+        item = {
+            "product_name": product_name,
+            "quantity": quantity,
+        }
+        if unit_price:
+            item["unit_price"] = unit_price
+        line_items.append(item)
+    return line_items
+
+
+def _format_line_items_summary(row: dict[str, Any], *, separator: str = "\n") -> str:
+    line_items = _extract_line_items(row)
+    if line_items:
+        return separator.join(
+            f"{item['product_name']}: {item['quantity']}*{item['unit_price']}"
+            if item.get("unit_price")
+            else f"{item['product_name']}: {item['quantity']}"
+            for item in line_items
+        )
+
+    product_name = str(row.get("product_name") or "").strip()
+    quantity = str(row.get("quantity") or "").strip()
+    if product_name and quantity:
+        return f"{product_name}: {quantity}"
+    if product_name:
+        return product_name
+    return "Нет данных"
 
 
 async def _list_operations(
@@ -73,6 +125,8 @@ async def _list_operations(
             "date_to": date_to,
         },
     )
+    for item in items:
+        item["line_items"] = _extract_line_items(item)
     return paginated(items=items, total=total, page=page, page_size=page_size)
 
 
@@ -220,6 +274,8 @@ async def export_operations(
     normalized_rows = []
     for row in rows:
         normalized = dict(row)
+        normalized["line_items"] = _extract_line_items(normalized)
+        normalized["line_items_summary"] = _format_line_items_summary(normalized, separator="; ")
         normalized["operation_type"] = OPERATION_TYPE_LABELS.get(normalized.get("operation_type"), "Операция")
         normalized["status"] = STATUS_LABELS.get(normalized.get("status"), "Неизвестно")
         normalized["notification_status"] = NOTIFICATION_STATUS_LABELS.get(
@@ -246,6 +302,7 @@ async def export_operations(
             ("Источник склад", "source_warehouse_name"),
             ("Получатель филиал", "destination_branch_name"),
             ("Получатель склад", "destination_warehouse_name"),
+            ("Номенклатура", "line_items_summary"),
             ("Продукт", "product_name"),
             ("Количество", "quantity"),
             ("Поставщик", "supplier_name"),
@@ -264,13 +321,25 @@ async def export_operations(
     )
 
 
+@router.get("/{operation_id}/items")
+async def operation_items(
+    operation_id: int = Path(..., ge=1),
+    db: Database = Depends(get_db),
+) -> dict:
+    service = AdminService(db)
+    detail = await service.get_operation_detail(operation_id)
+    return ok(_extract_line_items(detail))
+
+
 @router.get("/{operation_id}")
 async def operation_detail(
     operation_id: int = Path(..., ge=1),
     db: Database = Depends(get_db),
 ) -> dict:
     service = AdminService(db)
-    return ok(await service.get_operation_detail(operation_id))
+    detail = await service.get_operation_detail(operation_id)
+    detail["line_items"] = _extract_line_items(detail)
+    return ok(detail)
 
 
 @router.delete("/{operation_id}")

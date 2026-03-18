@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -11,6 +12,38 @@ from app.db.database import Database
 from app.services.admin_service import AdminService
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"], dependencies=[Depends(get_current_admin)])
+
+
+def _extract_line_items(row: dict) -> list[dict[str, str]]:
+    raw_items = row.get("line_items") or []
+    if isinstance(raw_items, str):
+        try:
+            raw_items = json.loads(raw_items)
+        except json.JSONDecodeError:
+            raw_items = []
+
+    if not isinstance(raw_items, list):
+        return []
+
+    line_items: list[dict[str, str]] = []
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            continue
+
+        product_name = str(raw_item.get("product_name") or "").strip()
+        quantity = str(raw_item.get("quantity") or "").strip()
+        unit_price = str(raw_item.get("unit_price") or "").strip()
+        if not product_name or not quantity:
+            continue
+
+        item = {
+            "product_name": product_name,
+            "quantity": quantity,
+        }
+        if unit_price:
+            item["unit_price"] = unit_price
+        line_items.append(item)
+    return line_items
 
 
 @router.get("")
@@ -90,6 +123,8 @@ async def user_operations(
         page_size=page_size,
         operation_type=operation_type,
     )
+    for item in items:
+        item["line_items"] = _extract_line_items(item)
     return paginated(items=items, total=total, page=page, page_size=page_size)
 
 

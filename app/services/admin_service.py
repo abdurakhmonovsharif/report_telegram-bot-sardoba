@@ -84,7 +84,15 @@ class AdminService:
         if product_name := filters.get("product_name"):
             token = product_name.strip()
             if token:
-                conditions.append(f"COALESCE(r.product_name, '') ILIKE {self._append(params, f'%{token}%')}")
+                placeholder = self._append(params, f"%{token}%")
+                conditions.append(
+                    f"""
+                    (
+                        COALESCE(r.product_name, '') ILIKE {placeholder}
+                        OR COALESCE(r.line_items::TEXT, '') ILIKE {placeholder}
+                    )
+                    """
+                )
         if filters.get("with_images"):
             conditions.append("EXISTS (SELECT 1 FROM request_photos rp2 WHERE rp2.request_id = r.id)")
         if user_query := filters.get("user_query"):
@@ -111,6 +119,7 @@ class AdminService:
                     (
                         COALESCE(r.code, '') ILIKE {placeholder}
                         OR COALESCE(r.product_name, '') ILIKE {placeholder}
+                        OR COALESCE(r.line_items::TEXT, '') ILIKE {placeholder}
                         OR COALESCE(r.comment, '') ILIKE {placeholder}
                         OR COALESCE(r.info_text, '') ILIKE {placeholder}
                         OR COALESCE(r.supplier_name, '') ILIKE {placeholder}
@@ -447,6 +456,7 @@ class AdminService:
                 r.notification_status,
                 r.product_name,
                 r.quantity,
+                r.line_items,
                 r.comment,
                 r.info_text,
                 r.supplier_name,
@@ -512,6 +522,7 @@ class AdminService:
                 COALESCE(tw.name, w.name, r.warehouse) AS destination_warehouse_name,
                 r.product_name,
                 r.quantity,
+                r.line_items,
                 r.supplier_name,
                 r.comment,
                 r.info_text,
@@ -573,6 +584,7 @@ class AdminService:
                 COALESCE(tw.name, w.name, r.warehouse) AS destination_warehouse_name,
                 r.product_name,
                 r.quantity,
+                r.line_items,
                 r.category,
                 r.info_text,
                 r.comment,

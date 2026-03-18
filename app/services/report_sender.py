@@ -1,5 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+import json
+from datetime import date as DateType
 from datetime import datetime
 from typing import Any, Mapping
 
@@ -124,14 +126,19 @@ class ReportSender:
             return self._build_transfer_caption(request_record=request_record, user_record=user_record)
 
         display_date = self._format_display_date(request_record)
-        nomenclature = self._format_nomenclature(request_record)
+        line_items = self._extract_line_items(request_record)
 
         lines = [
             f"📆дата: {display_date}",
             f"📍филиал: {request_record.get('branch') or 'Нет данных'}",
             f"♻️на склад: {request_record.get('warehouse') or 'Нет данных'}",
-            f"⚠️номенклатура: {nomenclature}",
         ]
+
+        if line_items:
+            lines.append("⚠️номенклатура:")
+            lines.extend(self._format_line_item(item) for item in line_items)
+        else:
+            lines.append(f"⚠️номенклатура: {self._format_nomenclature(request_record)}")
 
         if request_record.get("supplier_name"):
             lines.append(f"🚚поставщик: {request_record['supplier_name']}")
@@ -151,6 +158,11 @@ class ReportSender:
 
     @staticmethod
     def _format_display_date(request_record: Mapping[str, Any]) -> str:
+        document_date = request_record.get("date")
+        if isinstance(document_date, datetime):
+            return document_date.strftime("%d/%m/%Y")
+        if isinstance(document_date, DateType):
+            return document_date.strftime("%d/%m/%Y")
         created_at = request_record.get("created_at")
         if isinstance(created_at, datetime):
             return created_at.strftime("%d/%m/%Y")
@@ -158,12 +170,54 @@ class ReportSender:
 
     @staticmethod
     def _format_nomenclature(request_record: Mapping[str, Any]) -> str:
+        line_items = ReportSender._extract_line_items(request_record)
+        if line_items:
+            return " + ".join(ReportSender._format_line_item(item) for item in line_items)
         nomenclature_parts = [
             str(value).strip()
             for value in (request_record.get("product_name"), request_record.get("quantity"))
             if value and str(value).strip()
         ]
         return " + ".join(nomenclature_parts) or "Нет данных"
+
+    @staticmethod
+    def _extract_line_items(request_record: Mapping[str, Any]) -> list[dict[str, str]]:
+        raw_items = request_record.get("line_items") or []
+        if isinstance(raw_items, str):
+            try:
+                raw_items = json.loads(raw_items)
+            except json.JSONDecodeError:
+                raw_items = []
+
+        if not isinstance(raw_items, list):
+            return []
+
+        line_items: list[dict[str, str]] = []
+        for raw_item in raw_items:
+            if not isinstance(raw_item, Mapping):
+                continue
+
+            product_name = str(raw_item.get("product_name") or "").strip()
+            quantity = str(raw_item.get("quantity") or "").strip()
+            unit_price = str(raw_item.get("unit_price") or "").strip()
+            if not product_name or not quantity:
+                continue
+
+            line_item = {
+                "product_name": product_name,
+                "quantity": quantity,
+            }
+            if unit_price:
+                line_item["unit_price"] = unit_price
+            line_items.append(line_item)
+        return line_items
+
+    @staticmethod
+    def _format_line_item(line_item: Mapping[str, Any]) -> str:
+        unit_price = str(line_item.get("unit_price") or "").strip()
+        if unit_price:
+            return f"{line_item['product_name']}: {line_item['quantity']}*{unit_price}"
+        return f"{line_item['product_name']}: {line_item['quantity']}"
 
     def _build_transfer_caption(
         self,

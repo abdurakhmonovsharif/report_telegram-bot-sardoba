@@ -136,6 +136,26 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Введите количество:",
         "en": "Enter quantity:",
     },
+    "unit_price_prompt": {
+        "uz": "Narxini kiriting (1 kg yoki 1 dona uchun). Namuna: 140 000",
+        "ru": "Введите цену (за 1 кг или 1 штуку). Пример: 140 000",
+        "en": "Enter the price (per 1 kg or 1 piece). Example: 140 000",
+    },
+    "arrival_items_prompt": {
+        "uz": "Kiritilgan mahsulotlar:\n{items}\n\nYana mahsulot qo'shasizmi yoki davom etasizmi?",
+        "ru": "Добавленные товары:\n{items}\n\nДобавить еще товар или продолжить?",
+        "en": "Added products:\n{items}\n\nDo you want to add another product or continue?",
+    },
+    "arrival_add_more": {
+        "uz": "Yana qo'shish",
+        "ru": "Добавить еще",
+        "en": "Add another",
+    },
+    "arrival_continue": {
+        "uz": "Davom etish",
+        "ru": "Продолжить",
+        "en": "Continue",
+    },
     "arrival_photo_prompt": {
         "uz": "Nakladnoy rasmlarini yuboring. Tugatganda tugmani bosing yoki \"Nakladnoy yo'q\" ni tanlang.",
         "ru": "Отправьте фото накладной. После загрузки нажмите завершить или выберите \"Накладной нет\".",

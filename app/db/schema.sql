@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS requests (
     info_text TEXT,
     product_name TEXT,
     quantity TEXT,
+    line_items JSONB NOT NULL DEFAULT '[]'::jsonb,
     status TEXT NOT NULL DEFAULT 'completed',
     notification_status TEXT NOT NULL DEFAULT 'sent',
     source TEXT NOT NULL DEFAULT 'bot',

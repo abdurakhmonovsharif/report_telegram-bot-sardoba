@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -7,9 +9,9 @@ from aiogram.types import CallbackQuery, Message
 from app.bot.handlers.common import clear_inline_keyboard, get_user_language, parse_iso_date
 from app.bot.i18n import t
 from app.bot.keyboards import (
+    arrival_items_keyboard,
     arrival_photo_keyboard,
     branch_keyboard,
-    main_menu_keyboard,
     optional_comment_keyboard,
     start_entry_keyboard,
     warehouse_keyboard,
@@ -22,6 +24,76 @@ from app.services.request_service import ReportDeliveryError, RequestService
 router = Router(name="arrival")
 
 
+def _normalize_arrival_field(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _build_arrival_line_item(*, product_name: Any, quantity: Any, unit_price: Any) -> dict[str, str]:
+    normalized_product = _normalize_arrival_field(product_name)
+    normalized_quantity = _normalize_arrival_field(quantity)
+    normalized_unit_price = _normalize_arrival_field(unit_price)
+
+    if not normalized_product or not normalized_quantity or not normalized_unit_price:
+        raise ValueError("Arrival line item requires product name, quantity, and unit price")
+
+    return {
+        "product_name": normalized_product,
+        "quantity": normalized_quantity,
+        "unit_price": normalized_unit_price,
+    }
+
+
+def _get_arrival_line_items(data: dict[str, Any]) -> list[dict[str, str]]:
+    line_items: list[dict[str, str]] = []
+    for raw_item in data.get("line_items", []):
+        if not isinstance(raw_item, dict):
+            continue
+        try:
+            line_items.append(
+                _build_arrival_line_item(
+                    product_name=raw_item.get("product_name"),
+                    quantity=raw_item.get("quantity"),
+                    unit_price=raw_item.get("unit_price"),
+                )
+            )
+        except ValueError:
+            continue
+    return line_items
+
+
+def _format_arrival_line_item(item: dict[str, str]) -> str:
+    return f"{item['product_name']}: {item['quantity']}*{item['unit_price']}"
+
+
+def _format_arrival_items_for_user(items: list[dict[str, str]]) -> str:
+    return "\n".join(
+        f"{index}. {_format_arrival_line_item(item)}"
+        for index, item in enumerate(items, start=1)
+    )
+
+
+async def _show_arrival_items_prompt(
+    *,
+    reply: Message,
+    state: FSMContext,
+    lang: str,
+) -> None:
+    data = await state.get_data()
+    items = _get_arrival_line_items(data)
+    if not items:
+        await state.set_state(ArrivalStates.waiting_product_name)
+        await reply.answer(t("product_name_prompt", lang))
+        return
+
+    await reply.answer(
+        t("arrival_items_prompt", lang, items=_format_arrival_items_for_user(items)),
+        reply_markup=arrival_items_keyboard(lang, back_callback="arrival:back:price"),
+    )
+
+
 async def _submit_arrival(
     *,
     state: FSMContext,
@@ -32,6 +104,15 @@ async def _submit_arrival(
 ) -> None:
     lang = await get_user_language(db, from_user)
     data = await state.get_data()
+    line_items = _get_arrival_line_items(data)
+
+    if not line_items:
+        await state.set_state(ArrivalStates.waiting_product_name)
+        await reply.answer(t("product_name_prompt", lang))
+        return
+
+    primary_item = line_items[0]
+
     try:
         request_record = await request_service.finalize_request(
             telegram_user_id=from_user.id,
@@ -45,8 +126,9 @@ async def _submit_arrival(
             request_date=data.get("request_date"),
             comment=data.get("comment"),
             info_text=data.get("info_text"),
-            product_name=data.get("product_name"),
-            quantity=data.get("quantity"),
+            product_name=primary_item["product_name"],
+            quantity=primary_item["quantity"],
+            line_items=line_items,
             photos=data.get("photos", []),
         )
     except ReportDeliveryError:
@@ -125,6 +207,14 @@ async def arrival_select_warehouse(
         warehouse=warehouse["name"],
         photos=[],
         no_invoice=False,
+        line_items=[],
+        current_product_name=None,
+        current_quantity=None,
+        current_unit_price=None,
+        info_text=None,
+        comment=None,
+        supplier_name=None,
+        request_date=None,
     )
     await state.set_state(ArrivalStates.waiting_product_name)
 
@@ -141,7 +231,7 @@ async def arrival_product_name(message: Message, state: FSMContext, db: Database
     if not product_name:
         await message.answer(t("product_name_prompt", lang))
         return
-    await state.update_data(product_name=product_name)
+    await state.update_data(current_product_name=product_name)
     await state.set_state(ArrivalStates.waiting_quantity)
     await message.answer(t("quantity_prompt", lang))
 
@@ -153,12 +243,96 @@ async def arrival_quantity(message: Message, state: FSMContext, db: Database) ->
     if not quantity:
         await message.answer(t("quantity_prompt", lang))
         return
-    await state.update_data(quantity=quantity)
-    await state.set_state(ArrivalStates.collecting_photos)
-    await message.answer(
-        t("arrival_photo_prompt", lang),
-        reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:quantity"),
+    await state.update_data(current_quantity=quantity)
+    await state.set_state(ArrivalStates.waiting_unit_price)
+    await message.answer(t("unit_price_prompt", lang))
+
+
+@router.message(ArrivalStates.waiting_unit_price, F.text)
+async def arrival_unit_price(message: Message, state: FSMContext, db: Database) -> None:
+    lang = await get_user_language(db, message.from_user)
+    unit_price = message.text.strip()
+    if not unit_price:
+        await message.answer(t("unit_price_prompt", lang))
+        return
+
+    data = await state.get_data()
+    try:
+        line_item = _build_arrival_line_item(
+            product_name=data.get("current_product_name"),
+            quantity=data.get("current_quantity"),
+            unit_price=unit_price,
+        )
+    except ValueError:
+        await state.set_state(ArrivalStates.waiting_product_name)
+        await message.answer(t("product_name_prompt", lang))
+        return
+
+    line_items = _get_arrival_line_items(data)
+    line_items.append(line_item)
+
+    await state.update_data(
+        line_items=line_items,
+        current_product_name=None,
+        current_quantity=None,
+        current_unit_price=None,
     )
+    await state.set_state(ArrivalStates.confirming_items)
+    await _show_arrival_items_prompt(reply=message, state=state, lang=lang)
+
+
+@router.callback_query(ArrivalStates.confirming_items, F.data == "arrival:add_more")
+async def arrival_add_more_item(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
+    lang = await get_user_language(db, callback.from_user)
+    await state.update_data(current_product_name=None, current_quantity=None, current_unit_price=None)
+    await state.set_state(ArrivalStates.waiting_product_name)
+    if callback.message:
+        await clear_inline_keyboard(callback)
+        await callback.message.answer(t("product_name_prompt", lang))
+    await callback.answer()
+
+
+@router.callback_query(ArrivalStates.confirming_items, F.data == "arrival:items_done")
+async def arrival_items_done(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
+    lang = await get_user_language(db, callback.from_user)
+    await state.update_data(photos=[], no_invoice=False)
+    await state.set_state(ArrivalStates.collecting_photos)
+    if callback.message:
+        await clear_inline_keyboard(callback)
+        await callback.message.answer(
+            t("arrival_photo_prompt", lang),
+            reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:items"),
+        )
+    await callback.answer()
+
+
+@router.callback_query(ArrivalStates.confirming_items, F.data == "arrival:back:price")
+async def arrival_back_to_price(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
+    lang = await get_user_language(db, callback.from_user)
+    data = await state.get_data()
+    items = _get_arrival_line_items(data)
+
+    if not items:
+        await state.set_state(ArrivalStates.waiting_product_name)
+        if callback.message:
+            await clear_inline_keyboard(callback)
+            await callback.message.answer(t("product_name_prompt", lang))
+        await callback.answer()
+        return
+
+    last_item = items.pop()
+    await state.update_data(
+        line_items=items,
+        current_product_name=last_item["product_name"],
+        current_quantity=last_item["quantity"],
+        current_unit_price=last_item["unit_price"],
+    )
+    await state.set_state(ArrivalStates.waiting_unit_price)
+
+    if callback.message:
+        await clear_inline_keyboard(callback)
+        await callback.message.answer(t("unit_price_prompt", lang))
+    await callback.answer()
 
 
 @router.message(ArrivalStates.collecting_photos, F.photo)
@@ -191,7 +365,7 @@ async def arrival_collect_photos(message: Message, state: FSMContext, db: Databa
 
     await message.answer(
         t("arrival_photo_done", lang, count=len(photos)),
-        reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:quantity"),
+        reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:items"),
     )
 
 
@@ -220,7 +394,7 @@ async def arrival_photos_done(callback: CallbackQuery, state: FSMContext, db: Da
         if callback.message:
             await callback.message.answer(
                 t("upload_photo_or_finish", lang),
-                reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:quantity"),
+                reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:items"),
             )
         await callback.answer()
         return
@@ -332,6 +506,18 @@ async def arrival_quantity_required(message: Message, db: Database) -> None:
     await message.answer(t("quantity_prompt", lang))
 
 
+@router.message(ArrivalStates.waiting_unit_price)
+async def arrival_unit_price_required(message: Message, db: Database) -> None:
+    lang = await get_user_language(db, message.from_user)
+    await message.answer(t("unit_price_prompt", lang))
+
+
+@router.message(ArrivalStates.confirming_items)
+async def arrival_confirming_items_buttons_only(message: Message, db: Database) -> None:
+    lang = await get_user_language(db, message.from_user)
+    await message.answer(t("use_buttons", lang))
+
+
 @router.message(ArrivalStates.collecting_photos)
 async def arrival_photo_only(message: Message, db: Database) -> None:
     lang = await get_user_language(db, message.from_user)
@@ -371,14 +557,14 @@ async def arrival_back_to_branch(callback: CallbackQuery, state: FSMContext, db:
     await callback.answer()
 
 
-@router.callback_query(ArrivalStates.collecting_photos, F.data == "arrival:back:quantity")
-async def arrival_back_to_quantity(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
+@router.callback_query(ArrivalStates.collecting_photos, F.data == "arrival:back:items")
+async def arrival_back_to_items(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
     lang = await get_user_language(db, callback.from_user)
     await state.update_data(photos=[], no_invoice=False)
-    await state.set_state(ArrivalStates.waiting_quantity)
+    await state.set_state(ArrivalStates.confirming_items)
     if callback.message:
         await clear_inline_keyboard(callback)
-        await callback.message.answer(t("quantity_prompt", lang))
+        await _show_arrival_items_prompt(reply=callback.message, state=state, lang=lang)
     await callback.answer()
 
 
