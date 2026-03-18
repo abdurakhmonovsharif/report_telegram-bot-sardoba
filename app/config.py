@@ -3,7 +3,7 @@
 import json
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,9 +23,21 @@ class Settings(BaseSettings):
     webhook_secret: str | None = Field(default=None, alias="WEBHOOK_SECRET")
 
     admin_token: str | None = Field(default=None, alias="ADMIN_TOKEN")
+    jwt_secret: str = Field(default="change_me", alias="JWT_SECRET")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    access_token_expire_minutes: int = Field(default=720, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    admin_seed_login: str = Field(default="Adminaaaa11", alias="ADMIN_SEED_LOGIN")
+    admin_seed_password: str = Field(default="Adminaaaa11", alias="ADMIN_SEED_PASSWORD")
+    admin_seed_name: str = Field(default="Администратор", alias="ADMIN_SEED_NAME")
+    frontend_origin: str = Field(default="http://localhost:5173", alias="FRONTEND_ORIGIN")
+    default_report_chat_id: int | None = Field(default=None, alias="DEFAULT_REPORT_CHAT_ID")
+    warehouse_bar_chat_id: int | None = Field(default=None, alias="WAREHOUSE_BAR_CHAT_ID")
+    warehouse_kitchen_chat_id: int | None = Field(default=None, alias="WAREHOUSE_KITCHEN_CHAT_ID")
+    warehouse_supplies_chat_id: int | None = Field(default=None, alias="WAREHOUSE_SUPPLIES_CHAT_ID")
+    warehouse_meat_chat_id: int | None = Field(default=None, alias="WAREHOUSE_MEAT_CHAT_ID")
 
     routing_map_json: str = Field(
-        default='{"Sardoba":{"Asosiy":-1001111111111}}',
+        default="{}",
         alias="ROUTING_MAP_JSON",
     )
 
@@ -35,6 +47,20 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator(
+        "default_report_chat_id",
+        "warehouse_bar_chat_id",
+        "warehouse_kitchen_chat_id",
+        "warehouse_supplies_chat_id",
+        "warehouse_meat_chat_id",
+        mode="before",
+    )
+    @classmethod
+    def empty_string_to_none(cls, value):
+        if value in {"", None}:
+            return None
+        return value
 
     @property
     def routing_map(self) -> dict[str, dict[str, int]]:
@@ -60,11 +86,66 @@ class Settings(BaseSettings):
     def warehouses_for_branch(self, branch: str) -> list[str]:
         return list(self.routing_map.get(branch, {}).keys())
 
-    def group_for(self, branch: str, warehouse: str) -> int | None:
-        branch_map = self.routing_map.get(branch)
-        if not branch_map:
+    @property
+    def warehouse_group_map(self) -> dict[str, int]:
+        mapping: dict[str, int] = {}
+        if self.warehouse_bar_chat_id is not None:
+            mapping["bar"] = self.warehouse_bar_chat_id
+        if self.warehouse_kitchen_chat_id is not None:
+            mapping["kitchen"] = self.warehouse_kitchen_chat_id
+        if self.warehouse_supplies_chat_id is not None:
+            mapping["supplies"] = self.warehouse_supplies_chat_id
+        if self.warehouse_meat_chat_id is not None:
+            mapping["meat"] = self.warehouse_meat_chat_id
+        return mapping
+
+    @staticmethod
+    def normalize_warehouse_slug(value: str | None) -> str | None:
+        if not value:
             return None
-        return branch_map.get(warehouse)
+
+        normalized = (
+            value.strip()
+            .lower()
+            .replace("’", "'")
+            .replace("`", "'")
+            .replace("ʻ", "'")
+            .replace("‘", "'")
+        )
+
+        aliases = {
+            "bar": "bar",
+            "бар": "bar",
+            "kitchen": "kitchen",
+            "kuxna": "kitchen",
+            "кухня": "kitchen",
+            "supplies": "supplies",
+            "sredstva": "supplies",
+            "средства": "supplies",
+            "meat": "meat",
+            "go'sht": "meat",
+            "go‘sht": "meat",
+            "gosht": "meat",
+            "мясо": "meat",
+        }
+        return aliases.get(normalized)
+
+    def group_for_warehouse(self, *, warehouse_slug: str | None = None, warehouse_name: str | None = None) -> int | None:
+        slug = warehouse_slug or self.normalize_warehouse_slug(warehouse_name)
+        if slug:
+            chat_id = self.warehouse_group_map.get(slug)
+            if chat_id is not None:
+                return chat_id
+        return self.default_report_chat_id
+
+    def group_for(self, branch: str, warehouse: str) -> int | None:
+        chat_id = self.group_for_warehouse(warehouse_name=warehouse)
+        if chat_id is not None:
+            return chat_id
+        branch_map = self.routing_map.get(branch)
+        if branch_map:
+            return branch_map.get(warehouse)
+        return self.default_report_chat_id
 
 
 @lru_cache(maxsize=1)

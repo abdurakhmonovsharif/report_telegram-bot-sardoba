@@ -1,8 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import date, datetime
 
-from aiogram.types import User
+from aiogram.types import CallbackQuery, User
 
 from app.bot.i18n import SUPPORTED_LANGUAGES
 from app.db.database import Database
@@ -10,7 +10,13 @@ from app.db.database import Database
 
 async def ensure_user(db: Database, tg_user: User) -> dict:
     name = tg_user.full_name or tg_user.username or str(tg_user.id)
-    return await db.upsert_user(tg_user.id, name)
+    return await db.upsert_user(
+        tg_user.id,
+        name,
+        first_name=tg_user.first_name,
+        last_name=tg_user.last_name,
+        username=tg_user.username,
+    )
 
 
 async def get_user_language(db: Database, tg_user: User, fallback: str = "uz") -> str:
@@ -29,3 +35,13 @@ def parse_iso_date(value: str) -> date | None:
         except ValueError:
             continue
     return None
+
+
+async def clear_inline_keyboard(callback: CallbackQuery) -> None:
+    if callback.message is None:
+        return
+
+    try:
+        await callback.message.delete()
+    except Exception:
+        return

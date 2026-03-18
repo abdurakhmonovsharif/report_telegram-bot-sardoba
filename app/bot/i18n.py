@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
@@ -11,6 +11,26 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Пожалуйста, выберите язык интерфейса.",
         "en": "Please select your interface language.",
     },
+    "phone_request": {
+        "uz": "Davom etish uchun telefon raqamingizni yuboring.",
+        "ru": "Для продолжения отправьте свой номер телефона.",
+        "en": "Please share your phone number to continue.",
+    },
+    "share_phone": {
+        "uz": "Telefon raqamini yuborish",
+        "ru": "Отправить номер телефона",
+        "en": "Share phone number",
+    },
+    "share_own_phone": {
+        "uz": "Faqat o'zingizning telefon raqamingizni yuboring.",
+        "ru": "Пожалуйста, отправьте только свой номер телефона.",
+        "en": "Please share only your own phone number.",
+    },
+    "phone_saved": {
+        "uz": "Telefon raqamingiz saqlandi.",
+        "ru": "Ваш номер телефона сохранен.",
+        "en": "Your phone number has been saved.",
+    },
     "language_saved": {
         "uz": "Til muvaffaqiyatli saqlandi.",
         "ru": "Язык успешно сохранен.",
@@ -20,6 +40,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "uz": "Asosiy menyu. Amalni tanlang:",
         "ru": "Главное меню. Выберите действие:",
         "en": "Main menu. Choose an action:",
+    },
+    "start_prompt": {
+        "uz": "Davom etish uchun Boshlash tugmasini bosing.",
+        "ru": "Для продолжения нажмите кнопку «Запуск».",
+        "en": "Press Start to continue.",
+    },
+    "start_button": {
+        "uz": "Boshlash",
+        "ru": "Запуск",
+        "en": "Start",
     },
     "arrival": {
         "uz": "Qabul (Приход)",
@@ -31,6 +61,21 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Перемещение",
         "en": "Transfer",
     },
+    "select_transfer_kind": {
+        "uz": "Ko'chirish turini tanlang:",
+        "ru": "Выберите тип перемещения:",
+        "en": "Select transfer type:",
+    },
+    "transfer_kind_internal": {
+        "uz": "Omborlar orasida",
+        "ru": "Между складами",
+        "en": "Internal transfer",
+    },
+    "transfer_kind_branch": {
+        "uz": "Filiallar orasida",
+        "ru": "Между филиалами",
+        "en": "Between branches",
+    },
     "change_language": {
         "uz": "Tilni o'zgartirish",
         "ru": "Сменить язык",
@@ -41,10 +86,55 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Выберите филиал:",
         "en": "Select a branch:",
     },
+    "select_source_branch": {
+        "uz": "Yuboruvchi filialni tanlang:",
+        "ru": "Выберите филиал-отправитель:",
+        "en": "Select source branch:",
+    },
+    "select_destination_branch": {
+        "uz": "Qaysi filialga ko'chirilayotganini tanlang:",
+        "ru": "Выберите филиал-получатель:",
+        "en": "Select destination branch:",
+    },
     "select_warehouse": {
         "uz": "Omborni tanlang:",
         "ru": "Выберите склад:",
         "en": "Select a warehouse:",
+    },
+    "select_source_warehouse": {
+        "uz": "Qaysi ombordan ko'chirilayotganini tanlang:",
+        "ru": "Выберите склад-источник:",
+        "en": "Select source warehouse:",
+    },
+    "select_destination_warehouse": {
+        "uz": "Qaysi omborga ko'chirilayotganini tanlang:",
+        "ru": "Выберите склад-получатель:",
+        "en": "Select destination warehouse:",
+    },
+    "no_active_warehouses": {
+        "uz": "Hozircha faol omborlar mavjud emas.",
+        "ru": "Сейчас нет активных складов.",
+        "en": "There are no active warehouses right now.",
+    },
+    "same_branch_error": {
+        "uz": "Manba va qabul qiluvchi filial bir xil bo'lishi mumkin emas.",
+        "ru": "Филиал-источник и филиал-получатель не могут совпадать.",
+        "en": "Source and destination branches must be different.",
+    },
+    "same_warehouse_error": {
+        "uz": "Manba va qabul qiluvchi ombor bir xil bo'lishi mumkin emas.",
+        "ru": "Склад-источник и склад-получатель не могут совпадать.",
+        "en": "Source and destination warehouses must be different.",
+    },
+    "product_name_prompt": {
+        "uz": "Mahsulot nomini kiriting:",
+        "ru": "Введите название товара:",
+        "en": "Enter product name:",
+    },
+    "quantity_prompt": {
+        "uz": "Miqdorini kiriting:",
+        "ru": "Введите количество:",
+        "en": "Enter quantity:",
     },
     "arrival_photo_prompt": {
         "uz": "Nakladnoy rasmlarini yuboring. Tugatganda tugmani bosing yoki \"Nakladnoy yo'q\" ni tanlang.",
@@ -67,9 +157,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Finish upload",
     },
     "manual_text_prompt": {
-        "uz": "Mahsulotlar nomi va umumiy narxni matn ko'rinishida yozing.",
-        "ru": "Введите названия товаров и общую сумму вручную.",
-        "en": "Enter product names and total price manually.",
+        "uz": "Qo'shimcha ma'lumot yoki invoice tafsilotlarini matn ko'rinishida yozing.",
+        "ru": "Введите дополнительную информацию или детали накладной вручную.",
+        "en": "Enter additional information or invoice details manually.",
     },
     "supplier_prompt": {
         "uz": "Yetkazib beruvchini kiriting:",
@@ -80,6 +170,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "uz": "Sanani kiriting (YYYY-MM-DD):",
         "ru": "Введите дату (YYYY-MM-DD):",
         "en": "Enter date (YYYY-MM-DD):",
+    },
+    "arrival_comment_prompt": {
+        "uz": "Izoh yozing yoki o'tkazib yuboring.",
+        "ru": "Введите комментарий или пропустите шаг.",
+        "en": "Enter comment or skip this step.",
+    },
+    "skip_optional": {
+        "uz": "O'tkazib yuborish",
+        "ru": "Пропустить",
+        "en": "Skip",
     },
     "date_invalid": {
         "uz": "Sana noto'g'ri. Format: YYYY-MM-DD",
@@ -131,10 +231,40 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Операция отменена.",
         "en": "Operation cancelled.",
     },
+    "back": {
+        "uz": "⬅️ Orqaga",
+        "ru": "⬅️ Назад",
+        "en": "⬅️ Back",
+    },
     "use_buttons": {
         "uz": "Iltimos, tugmalardan foydalaning.",
         "ru": "Пожалуйста, используйте кнопки.",
         "en": "Please use the buttons.",
+    },
+    "setgroup_usage": {
+        "uz": "Guruhda /setgroup bar, /setgroup kitchen, /setgroup supplies yoki /setgroup meat ko'rinishida yuboring.",
+        "ru": "В группе отправьте /setgroup bar, /setgroup kitchen, /setgroup supplies или /setgroup meat.",
+        "en": "In the group send /setgroup bar, /setgroup kitchen, /setgroup supplies or /setgroup meat.",
+    },
+    "setgroup_group_only": {
+        "uz": "Bu buyruq faqat guruh ichida ishlaydi.",
+        "ru": "Эта команда работает только внутри группы.",
+        "en": "This command works only inside a group.",
+    },
+    "setgroup_admin_only": {
+        "uz": "Bu buyruqni faqat guruh admini ishlata oladi.",
+        "ru": "Эту команду может использовать только администратор группы.",
+        "en": "Only a group admin can use this command.",
+    },
+    "setgroup_unknown_warehouse": {
+        "uz": "Noto'g'ri sklad. Ruxsat etilgan qiymatlar: bar, kitchen, supplies, meat.",
+        "ru": "Неверный склад. Допустимые значения: bar, kitchen, supplies, meat.",
+        "en": "Unknown warehouse. Allowed values: bar, kitchen, supplies, meat.",
+    },
+    "setgroup_success": {
+        "uz": "\"{warehouse}\" skladi ushbu guruhga biriktirildi.",
+        "ru": "Склад \"{warehouse}\" привязан к этой группе.",
+        "en": "Warehouse \"{warehouse}\" has been linked to this group.",
     },
 }
 
@@ -145,4 +275,3 @@ def t(key: str, lang: str, **kwargs: Any) -> str:
     if kwargs:
         return text.format(**kwargs)
     return text
-

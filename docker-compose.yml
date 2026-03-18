@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: sardoba_bot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: warehouse_bot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    container_name: sardoba_bot_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:root@db:5432/warehouse_bot
+    depends_on:
+      - db
+    volumes:
+      - ./media:/app/media
+      - ./logs:/app/logs
+
+  frontend:
+    build: frontend/
+    container_name: sardoba_bot_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      PORT: 5173
+
+volumes:
+  postgres_data:

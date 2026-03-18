@@ -15,7 +15,7 @@ async def run_all() -> None:
 
     api_config = uvicorn.Config(
         app=api_app,
-        host=settings.api_host,
+        
         port=settings.api_port,
         log_level=settings.log_level.lower(),
     )

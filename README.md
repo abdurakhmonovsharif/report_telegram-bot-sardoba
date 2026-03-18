@@ -1,141 +1,179 @@
-﻿# Restaurant Warehouse Telegram Bot (aiogram + FastAPI + PostgreSQL)
+# Sardoba Warehouse Platform
 
-Production-ready backend for restaurant warehouse control with:
-- `Приход` (Arrival) workflow
-- `Перемещение` (Transfer) workflow
-- multilingual Telegram bot (`Uzbek`, `Russian`, `English`)
-- PostgreSQL persistence with `asyncpg`
-- admin REST API with FastAPI and Swagger
-- full event/error logging to `system_logs`
+Telegram bot + FastAPI backend + Material UI admin panel for warehouse operations.
 
-## 1. Tech stack
-- Python `3.11`
+## Stack
+
+- Python 3.11+
 - `aiogram 3.x`
 - `FastAPI`
 - `asyncpg`
 - PostgreSQL
+- React + TypeScript + Vite + Material UI
 
-## 2. Features implemented
-- `/start` first asks for language via Telegram buttons before main functionality.
-- Uzbek is the default system language, but user must explicitly choose/confirm language first.
-- Chosen language is stored in `users.language`.
-- Language can be changed later via `/language` or menu button.
-- Strict FSM step-by-step workflows using Telegram buttons/inline keyboards.
+## What is included
 
-### Arrival (`Приход`) flow
-1. Select branch
-2. Select warehouse
-3. Upload unlimited invoice photos (`file_id`) OR choose `No invoice photo`
-4. If no invoice photo: enter manual text (products + total price)
-5. Enter supplier
-6. Enter date
-7. Request is saved and report is sent to mapped Telegram group
+- Telegram bot with mandatory phone share on first start
+- two bot flows: `Приход` and `Перемещение`
+- static seeded branches
+- four static warehouses with per-warehouse Telegram notification routing
+- rich operation model: product, quantity, info text, comment, photos, supplier, date
+- operation notification status: `sent` / `failed`
+- admin authentication with login/password and JWT
+- Russian-only admin UI
+- dashboard, users, operations, arrivals, transfers, warehouses, branches, analytics, audit, profile pages
+- CSV export for users, operations, and audit logs
+- audit trail for bot/admin/system actions
+- media preview endpoints for operation photos and user avatars
+- SQL migrations + seed data
 
-### Transfer (`Перемещение`) flow
-1. Select branch
-2. Select warehouse
-3. Enter comment (moved products)
-4. Optional photo upload (or skip)
-5. Request is saved and report is sent to mapped Telegram group
+## Static branches
 
-## 3. Database schema
-Schema file: `app/db/schema.sql`
+Seeded automatically in this order:
 
-Tables:
-- `users`: `telegram_id`, `name`, `role`, `language`, timestamps
-- `requests`: `id`, `operation_type`, `branch`, `warehouse`, `supplier_name`, `date`, `comment`, `created_at`, `user_id`
-- `request_photos`: `id`, `request_id`, `telegram_file_id`
-- `system_logs`: all success/error events, backend exceptions, Telegram API errors
+1. `Geofizika` / code `139235`
+2. `Gijdivon` / code `157757`
+3. `Severniy` / code `139350`
+4. `Mk5` / code `139458`
 
-## 4. Configuration
-Copy `.env.example` to `.env` and update values.
+The bot shows bot labels, while admin API/UI uses Russian admin labels.
 
-Required:
+## Static warehouses
+
+- `Бар`
+- `Кухня`
+- `Средства`
+- `Мясо`
+
+These warehouses are fixed by the system. The admin panel exposes them in read-only mode and the bot uses only these four options.
+
+## Group binding
+
+Warehouse Telegram groups are normally linked directly from Telegram, not from `.env`.
+
+1. Add the bot to the target group.
+2. Make the bot or the user who runs the command an administrator of that group.
+3. In the group run one of:
+   - `/setgroup bar`
+   - `/setgroup kitchen`
+   - `/setgroup supplies`
+   - `/setgroup meat`
+
+The bot stores `chat_id` in the database on the corresponding warehouse row and starts using that group for notifications.
+
+## Backend API groups
+
+- `/api/v1/auth/*`
+- `/api/v1/dashboard/*`
+- `/api/v1/users/*`
+- `/api/v1/operations/*`
+- `/api/v1/warehouses*`
+- `/api/v1/branches*`
+- `/api/v1/analytics/*`
+- `/api/v1/audit`
+- `/api/v1/media/*`
+
+Export endpoints:
+
+- `/api/v1/users/export`
+- `/api/v1/operations/export`
+- `/api/v1/audit/export`
+
+Legacy minimal endpoints are still available under `/admin/*`.
+
+## Database migrations
+
+SQL migrations live in:
+
+- `app/db/migrations/`
+
+They are applied automatically when `AUTO_MIGRATE=true`.
+
+Main schema snapshot:
+
+- `app/db/schema.sql`
+
+## Environment
+
+Copy `.env.example` to `.env`.
+
+Important variables:
+
 - `BOT_TOKEN`
 - `DATABASE_URL`
-- `ROUTING_MAP_JSON` (branch/warehouse -> Telegram group ID map)
+- `JWT_SECRET`
+- `ADMIN_SEED_LOGIN`
+- `ADMIN_SEED_PASSWORD`
+- `ADMIN_SEED_NAME`
+- `FRONTEND_ORIGIN`
+- `WAREHOUSE_BAR_CHAT_ID`
+- `WAREHOUSE_KITCHEN_CHAT_ID`
+- `WAREHOUSE_SUPPLIES_CHAT_ID`
+- `WAREHOUSE_MEAT_CHAT_ID`
+- `DEFAULT_REPORT_CHAT_ID` optional fallback
+- `ROUTING_MAP_JSON` optional legacy Telegram routing map
 
-Example routing map:
-```json
-{"Sardoba":{"Asosiy":-1001111111111,"Sovutkich":-1002222222222},"Chilonzor":{"Asosiy":-1003333333333}}
-```
+Normally the `WAREHOUSE_*_CHAT_ID` variables are not required because group binding is stored in the database via `/setgroup`. They remain only as compatibility fallback.
 
-`ROUTING_MAP_JSON` determines:
-- which branches and warehouses appear in bot buttons
-- which Telegram group receives each report
+## Admin auth rules
 
-## 5. Installation
+Login:
+
+- minimum 8 characters
+- minimum 1 uppercase Latin letter
+- minimum 5 lowercase Latin letters
+- minimum 2 digits
+- only Latin letters and digits
+
+Password:
+
+- minimum 8 characters
+- only Latin letters and digits
+- stored only as hash
+
+## Run backend
+
 ```bash
 python -m venv .venv
-. .venv/Scripts/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+. .venv/bin/activate
 pip install -r requirements.txt
-```
-
-## 6. Run
-
-### A) Run bot only (long polling)
-```bash
-python -m app.bot.run
-```
-
-### B) Run admin API only
-```bash
-uvicorn app.api.app:app --host 0.0.0.0 --port 8000
-```
-
-### C) Run bot + admin API together (single process)
-```bash
 python -m app.main
 ```
 
-## 7. Admin API and Swagger
-Default base URL:
-- `http://localhost:8000`
+Backend URLs:
 
-Swagger UI:
-- `http://localhost:8000/docs`
+- API: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+- Health: `http://localhost:8000/health`
 
-OpenAPI schema:
-- `http://localhost:8000/openapi.json`
+## Run frontend in dev
 
-Health endpoint:
-- `GET /health`
-
-Admin endpoints:
-- `GET /admin/users`
-- `GET /admin/requests`
-- `GET /admin/logs`
-- `GET /admin/stats`
-
-If `ADMIN_TOKEN` is set in `.env`, include header:
-- `X-Admin-Token: <your_token>`
-
-## 8. How administrators/developers connect to Admin API
-Use any HTTP client (`curl`, Postman, Insomnia, browser for Swagger).
-
-Example prompt/instruction for developers:
-
-```text
-Connect to the warehouse admin API at http://localhost:8000.
-If authentication is enabled, add header X-Admin-Token.
-Use /docs for Swagger UI and /openapi.json for schema.
-Read requests via GET /admin/requests and logs via GET /admin/logs.
-```
-
-Example `curl`:
 ```bash
-curl -H "X-Admin-Token: replace_with_secure_token" http://localhost:8000/admin/stats
+cd frontend
+npm install
+npm run dev
 ```
 
-## 9. Error handling behavior
-- Internal exceptions are not exposed to Telegram users.
-- Users receive safe fallback messages.
-- Exceptions and failures are written to `system_logs`.
-- Telegram API delivery failures are logged and surfaced to user safely.
-- FSM state remains controlled and does not jump across steps.
+Dev URL:
 
-## 10. Deployment notes (VPS)
-- Run bot and API as separate systemd services for best isolation, or use `app.main` in one process.
-- Put PostgreSQL and bot/API credentials in environment variables.
-- Restrict admin API access by firewall and `ADMIN_TOKEN`.
-- Keep `AUTO_MIGRATE=true` for bootstrap, then consider controlled migrations for production.
+- `http://localhost:5173/panel`
+
+## Build frontend
+
+```bash
+cd frontend
+npm run build
+```
+
+If `frontend/dist` exists, FastAPI serves the admin panel at:
+
+- `http://localhost:8000/panel`
+
+## Developer notes
+
+- Telegram users are upserted by `telegram_id`, so duplicates are not created on re-entry.
+- Bot photos are stored as Telegram file ids + metadata in `request_photos`.
+- User avatar is fetched from Telegram profile photos when possible and exposed through backend media endpoints.
+- Operations receive unique codes like `PRI-YYYYMMDD-000001` and `PER-YYYYMMDD-000001`.
+- Each operation stores `notification_status`, while Telegram delivery failures are preserved in audit/system logs and do not roll back the saved operation.
+- Dashboard/analytics cards in the frontend are backed by real backend endpoints, no mock data is used.

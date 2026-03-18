@@ -1,12 +1,12 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import get_db, verify_admin_token
+from app.api.dependencies import get_current_admin, get_db
 from app.api.schemas import RequestOut, StatsOut, SystemLogOut, UserOut
 from app.db.database import Database
 
-router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(verify_admin_token)])
+router = APIRouter(prefix="/admin", tags=["legacy-admin"], dependencies=[Depends(get_current_admin)])
 
 
 @router.get("/users", response_model=list[UserOut])

@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats
 
 from app.bot.handlers import arrival, menu, start, transfer
 from app.bot.middlewares.error_middleware import ErrorLoggingMiddleware
@@ -57,6 +58,20 @@ async def run_bot() -> None:
             pass
 
         await bot.delete_webhook(drop_pending_updates=True)
+        await bot.set_my_commands(
+            commands=[
+                BotCommand(command="start", description="Запустить бота"),
+                BotCommand(command="language", description="Выбрать язык"),
+                BotCommand(command="cancel", description="Отменить текущее действие"),
+            ],
+            scope=BotCommandScopeAllPrivateChats(),
+        )
+        await bot.set_my_commands(
+            commands=[
+                BotCommand(command="setgroup", description="Привязать текущую группу к складу"),
+            ],
+            scope=BotCommandScopeAllGroupChats(),
+        )
         await dispatcher.start_polling(
             bot,
             db=db,
