@@ -1,12 +1,15 @@
 version: "3.9"
 
 services:
-  backend:
+  sardoba_warhouse_server:
     build: .
-    container_name: sardoba_bot_backend
+    image: sardoba_warhouse_server
+    container_name: sardoba_warhouse_server
     restart: unless-stopped
     ports:
       - "9000:9000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:

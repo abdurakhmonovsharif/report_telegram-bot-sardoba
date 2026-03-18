@@ -24,4 +24,4 @@ COPY . .
 EXPOSE 9000
 
 # Start command
-CMD ["python", "app/main.py"]
+CMD ["python", "-m", "app.main"]
