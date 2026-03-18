@@ -242,9 +242,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Request saved and sent to the group. ID: {request_id}",
     },
     "request_saved_but_not_sent": {
-        "uz": "So'rov saqlandi, lekin guruhga yuborilmadi. Administratorga xabar berildi.",
-        "ru": "Заявка сохранена, но не отправлена в группу. Администратор уведомлен.",
-        "en": "Request saved, but delivery to the group failed. Administrator was notified.",
+        "uz": "So'rov saqlandi, lekin guruhga yuborilmadi. ID: {request_id}. Administratorga xabar berildi.",
+        "ru": "Заявка сохранена, но не отправлена в группу. ID: {request_id}. Администратор уведомлен.",
+        "en": "Request saved, but delivery to the group failed. ID: {request_id}. Administrator was notified.",
     },
     "upload_photo_or_finish": {
         "uz": "Avval kamida 1 ta rasm yuboring, keyin tugatish tugmasini bosing.",

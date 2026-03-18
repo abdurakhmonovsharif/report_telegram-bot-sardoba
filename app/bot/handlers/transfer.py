@@ -539,11 +539,11 @@ async def transfer_finalize(
             line_items=line_items,
             photos=photos,
         )
-    except ReportDeliveryError:
+    except ReportDeliveryError as exc:
         await state.clear()
         if callback.message:
             await clear_inline_keyboard(callback)
-            await callback.message.answer(t("request_saved_but_not_sent", lang))
+            await callback.message.answer(t("request_saved_but_not_sent", lang, request_id=exc.request_id))
             await callback.message.answer(t("start_prompt", lang), reply_markup=start_entry_keyboard(lang))
         await callback.answer()
         return

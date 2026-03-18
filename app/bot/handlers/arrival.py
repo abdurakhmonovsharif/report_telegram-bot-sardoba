@@ -144,9 +144,9 @@ async def _submit_arrival(
             line_items=line_items,
             photos=data.get("photos", []),
         )
-    except ReportDeliveryError:
+    except ReportDeliveryError as exc:
         await state.clear()
-        await reply.answer(t("request_saved_but_not_sent", lang))
+        await reply.answer(t("request_saved_but_not_sent", lang, request_id=exc.request_id))
         await reply.answer(t("start_prompt", lang), reply_markup=start_entry_keyboard(lang))
         return
     except Exception:

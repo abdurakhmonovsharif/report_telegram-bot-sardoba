@@ -16,6 +16,7 @@ from app.bot.i18n import t
 from app.bot.states import ArrivalStates, TransferStates
 from app.core.numeric import format_numeric_value, is_valid_numeric_value
 from app.services.report_sender import ReportSender
+from app.services.request_service import ReportDeliveryError
 
 
 class FakeState:
@@ -84,6 +85,11 @@ class FakeRequestService:
     async def finalize_request(self, **kwargs) -> dict:
         self.calls.append(kwargs)
         return {"id": 77}
+
+
+class FailingRequestService:
+    async def finalize_request(self, **kwargs) -> dict:
+        raise ReportDeliveryError(91)
 
 
 def make_user() -> SimpleNamespace:
@@ -211,6 +217,29 @@ class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(callback_message.answers[0]["text"], t("upload_photo_or_finish", "uz"))
         self.assertEqual(len(callback.answers), 1)
 
+    async def test_submit_arrival_failure_still_returns_request_id(self) -> None:
+        user = make_user()
+        reply = FakeMessage(from_user=user)
+        state = FakeState(
+            {
+                "branch": "Mk5",
+                "warehouse": "Мясо",
+                "line_items": [{"product_name": "ширбоз", "quantity": "15.2", "unit_price": "140000"}],
+                "photos": [],
+            }
+        )
+
+        await _submit_arrival(
+            state=state,
+            db=FakeDB(),
+            request_service=FailingRequestService(),
+            from_user=user,
+            reply=reply,
+        )
+
+        self.assertTrue(state.cleared)
+        self.assertIn("ID: 91", reply.answers[0]["text"])
+
     def test_report_sender_caption_lists_all_arrival_items_and_document_date(self) -> None:
         sender = ReportSender(bot=SimpleNamespace(), settings=SimpleNamespace(), db=SimpleNamespace())
         caption = sender._build_caption(
@@ -324,6 +353,25 @@ class TransferFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(callback_message.answers), 1)
         self.assertEqual(callback_message.answers[0]["text"], t("upload_photo_or_finish", "uz"))
         self.assertEqual(len(callback.answers), 1)
+
+    async def test_transfer_failure_still_returns_request_id(self) -> None:
+        user = make_user()
+        callback_message = FakeMessage(from_user=user)
+        callback = FakeCallback(data="transfer:photos_done", from_user=user, message=callback_message)
+        state = FakeState(
+            {
+                "branch": "Geofizika",
+                "warehouse": "Без склада",
+                "transfer_type": "branch",
+                "line_items": [{"product_name": "Suv", "quantity": "10"}],
+                "photos": [{"telegram_file_id": "file-1"}],
+            }
+        )
+
+        await transfer_finalize(callback, state, FakeDB(), FailingRequestService())
+
+        self.assertTrue(state.cleared)
+        self.assertIn("ID: 91", callback_message.answers[0]["text"])
 
 
 if __name__ == "__main__":
