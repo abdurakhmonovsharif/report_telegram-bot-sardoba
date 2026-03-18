@@ -1,10 +1,10 @@
 version: "3.9"
 
 services:
-  sardoba_warhouse_server:
+  sardoba_warehouse_server:
     build: .
-    image: sardoba_warhouse_server
-    container_name: sardoba_warhouse_server
+    image: sardoba_warehouse_server
+    container_name: sardoba_warehouse_server
     restart: unless-stopped
     ports:
       - "9000:9000"
