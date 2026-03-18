@@ -180,9 +180,36 @@ class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
             photos_count=0,
         )
 
-        self.assertIn("📆дата: 18/03/2026", caption)
-        self.assertIn("⚠️номенклатура:\nширбоз: 15,2*140 000\nрулет: 3*95 000", caption)
-        self.assertIn("🚚поставщик: бобо", caption)
+        self.assertIn("📦 <b>Prixod</b>", caption)
+        self.assertIn("📆 <b>Дата:</b> 18/03/2026", caption)
+        self.assertIn("⚠️ <b>Номенклатура:</b>\n• ширбоз — 15,2 × 140 000\n• рулет — 3 × 95 000", caption)
+        self.assertIn("🚚 <b>Поставщик:</b> бобо", caption)
+        self.assertIn("📷 <b>Фото:</b> нет", caption)
+
+    def test_report_sender_caption_lists_transfer_header(self) -> None:
+        sender = ReportSender(bot=SimpleNamespace(), settings=SimpleNamespace(), db=SimpleNamespace())
+        caption = sender._build_caption(
+            {
+                "operation_type": "transfer",
+                "transfer_type": "warehouse",
+                "branch": "Geofizika",
+                "warehouse": "Бар",
+                "source_warehouse": "Кухня",
+                "date": date(2026, 3, 18),
+                "product_name": "Kola",
+                "quantity": "10",
+            },
+            {
+                "name": "Sharif Abdurakhmonov",
+                "phone_number": "998931434413",
+            },
+            photos_count=2,
+        )
+
+        self.assertIn("🔄 <b>Peremesheniya</b>", caption)
+        self.assertIn("📤 <b>Со склада:</b> Кухня", caption)
+        self.assertIn("📥 <b>На склад:</b> Бар", caption)
+        self.assertIn("📷 <b>Фото:</b> 2 шт.", caption)
 
 
 if __name__ == "__main__":

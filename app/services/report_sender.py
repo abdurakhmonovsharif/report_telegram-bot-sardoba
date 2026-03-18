@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from html import escape
 from datetime import date as DateType
 from datetime import datetime
 from typing import Any, Mapping
@@ -14,8 +15,8 @@ from app.db.database import Database
 
 
 OPERATION_LABELS = {
-    "arrival": "Приход",
-    "transfer": "Перемещение",
+    "arrival": "Prixod",
+    "transfer": "Peremesheniya",
 }
 
 
@@ -123,37 +124,50 @@ class ReportSender:
 
     def _build_caption(self, request_record: dict, user_record: dict, *, photos_count: int) -> str:
         if request_record.get("operation_type") == "transfer":
-            return self._build_transfer_caption(request_record=request_record, user_record=user_record)
+            return self._build_transfer_caption(
+                request_record=request_record,
+                user_record=user_record,
+                photos_count=photos_count,
+            )
 
         display_date = self._format_display_date(request_record)
         line_items = self._extract_line_items(request_record)
 
         lines = [
-            f"📆дата: {display_date}",
-            f"📍филиал: {request_record.get('branch') or 'Нет данных'}",
-            f"♻️на склад: {request_record.get('warehouse') or 'Нет данных'}",
+            self._format_operation_header("arrival"),
+            "",
+            self._format_detail_line("📆", "Дата", display_date),
+            self._format_detail_line("📍", "Филиал", request_record.get("branch")),
+            self._format_detail_line("♻️", "На склад", request_record.get("warehouse")),
+            "",
         ]
 
         if line_items:
-            lines.append("⚠️номенклатура:")
+            lines.append("⚠️ <b>Номенклатура:</b>")
             lines.extend(self._format_line_item(item) for item in line_items)
         else:
-            lines.append(f"⚠️номенклатура: {self._format_nomenclature(request_record)}")
+            lines.append(
+                self._format_detail_line("⚠️", "Номенклатура", self._format_nomenclature(request_record))
+            )
 
         if request_record.get("supplier_name"):
-            lines.append(f"🚚поставщик: {request_record['supplier_name']}")
+            lines.append("")
+            lines.append(self._format_detail_line("🚚", "Поставщик", request_record["supplier_name"]))
 
         if request_record.get("comment"):
-            lines.append(f"💬комментарий: {request_record['comment']}")
+            lines.append(self._format_detail_line("💬", "Комментарий", request_record["comment"]))
 
         if request_record.get("info_text"):
-            lines.append(f"ℹ️доп. инфо: {request_record['info_text']}")
+            lines.append(self._format_detail_line("ℹ️", "Доп. инфо", request_record["info_text"]))
 
-        lines.extend([
-            f"👤отправитель: {user_record['name']}",
-            f"📞телефон: {user_record.get('phone_number') or 'Нет данных'}",
-            "📷фото:",
-        ])
+        lines.extend(
+            [
+                "",
+                self._format_detail_line("👤", "Отправитель", user_record.get("name")),
+                self._format_detail_line("📞", "Телефон", user_record.get("phone_number")),
+                self._format_detail_line("📷", "Фото", self._format_photos_status(photos_count)),
+            ]
+        )
         return "\n".join(lines)
 
     @staticmethod
@@ -214,56 +228,99 @@ class ReportSender:
 
     @staticmethod
     def _format_line_item(line_item: Mapping[str, Any]) -> str:
-        unit_price = str(line_item.get("unit_price") or "").strip()
+        product_name = escape(str(line_item.get("product_name") or "").strip() or "Нет данных")
+        quantity = escape(str(line_item.get("quantity") or "").strip() or "Нет данных")
+        unit_price = escape(str(line_item.get("unit_price") or "").strip())
         if unit_price:
-            return f"{line_item['product_name']}: {line_item['quantity']}*{unit_price}"
-        return f"{line_item['product_name']}: {line_item['quantity']}"
+            return f"• {product_name} — {quantity} × {unit_price}"
+        return f"• {product_name} — {quantity}"
+
+    @staticmethod
+    def _format_operation_header(operation_type: str) -> str:
+        icon = "📦" if operation_type == "arrival" else "🔄"
+        label = OPERATION_LABELS.get(operation_type, "Операция")
+        return f"{icon} <b>{escape(label)}</b>"
+
+    @staticmethod
+    def _format_detail_line(icon: str, label: str, value: Any) -> str:
+        normalized_value = str(value).strip() if value is not None else ""
+        if not normalized_value:
+            normalized_value = "Нет данных"
+        return f"{icon} <b>{escape(label)}:</b> {escape(normalized_value)}"
+
+    @staticmethod
+    def _format_photos_status(photos_count: int) -> str:
+        if photos_count <= 0:
+            return "нет"
+        if photos_count == 1:
+            return "1 шт."
+        return f"{photos_count} шт."
 
     def _build_transfer_caption(
         self,
         *,
         request_record: dict,
         user_record: dict,
+        photos_count: int,
     ) -> str:
         display_date = self._format_display_date(request_record)
-        nomenclature = self._format_nomenclature(request_record)
         transfer_type = request_record.get("transfer_type") or request_record.get("transfer_kind")
-        destination_branch = request_record.get("branch") or "Нет данных"
-        destination_warehouse = request_record.get("warehouse") or "Нет данных"
+        destination_branch = request_record.get("branch")
+        destination_warehouse = request_record.get("warehouse")
         source_branch = request_record.get("source_branch") or request_record.get("from_branch_name")
         source_warehouse = request_record.get("source_warehouse") or request_record.get("from_warehouse_name")
+        line_items = self._extract_line_items(request_record)
+
+        lines = [
+            self._format_operation_header("transfer"),
+            "",
+            self._format_detail_line("📆", "Дата", display_date),
+        ]
 
         if transfer_type == "warehouse":
-            lines = [
-                f"📆дата: {display_date}",
-                f"📍филиал: {destination_branch}",
-                f"♻️со склада: {source_warehouse or 'Нет данных'}",
-                f"♻️на склад: {destination_warehouse}",
-                f"⚠️номенклатура: {nomenclature}",
-            ]
+            lines.extend(
+                [
+                    self._format_detail_line("📍", "Филиал", destination_branch),
+                    self._format_detail_line("📤", "Со склада", source_warehouse),
+                    self._format_detail_line("📥", "На склад", destination_warehouse),
+                    "",
+                ]
+            )
         elif transfer_type == "branch":
-            lines = [
-                f"📆дата: {display_date}",
-                f"📍филиал получатель: {destination_branch}",
-                f"📍филиал отправитель: {source_branch or 'Нет данных'}",
-                f"⚠️номенклатура: {nomenclature}",
-            ]
+            lines.extend(
+                [
+                    self._format_detail_line("📥", "Филиал получатель", destination_branch),
+                    self._format_detail_line("📤", "Филиал отправитель", source_branch),
+                    "",
+                ]
+            )
         else:
-            lines = [
-                f"📆дата: {display_date}",
-                f"📍филиал: {destination_branch}",
-                f"♻️на склад: {destination_warehouse}",
-                f"⚠️номенклатура: {nomenclature}",
-            ]
+            lines.extend(
+                [
+                    self._format_detail_line("📍", "Филиал", destination_branch),
+                    self._format_detail_line("📥", "Куда", destination_warehouse),
+                    "",
+                ]
+            )
+
+        if line_items:
+            lines.append("⚠️ <b>Номенклатура:</b>")
+            lines.extend(self._format_line_item(item) for item in line_items)
+        else:
+            lines.append(self._format_detail_line("⚠️", "Номенклатура", self._format_nomenclature(request_record)))
 
         if request_record.get("comment"):
-            lines.append(f"💬комментарий: {request_record['comment']}")
+            lines.append("")
+            lines.append(self._format_detail_line("💬", "Комментарий", request_record["comment"]))
         if request_record.get("info_text"):
-            lines.append(f"ℹ️доп. инфо: {request_record['info_text']}")
+            lines.append(self._format_detail_line("ℹ️", "Доп. инфо", request_record["info_text"]))
 
-        lines.extend([
-            f"👤отправитель: {user_record['name']}",
-            f"📞телефон: {user_record.get('phone_number') or 'Нет данных'}",
-            "📷фото:",
-        ])
+        lines.extend(
+            [
+                "",
+                self._format_detail_line("👤", "Отправитель", user_record.get("name")),
+                self._format_detail_line("📞", "Телефон", user_record.get("phone_number")),
+                self._format_detail_line("📷", "Фото", self._format_photos_status(photos_count)),
+            ]
+        )
         return "\n".join(lines)
