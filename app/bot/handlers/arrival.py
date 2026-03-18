@@ -3,10 +3,18 @@ from __future__ import annotations
 from typing import Any
 
 from aiogram import F, Router
+from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from app.bot.handlers.common import clear_inline_keyboard, get_user_language, parse_iso_date
+from app.bot.handlers.common import (
+    clear_inline_keyboard,
+    format_numeric_value,
+    get_user_language,
+    is_valid_numeric_value,
+    parse_iso_date,
+    serialize_telegram_photo,
+)
 from app.bot.i18n import t
 from app.bot.keyboards import (
     arrival_items_keyboard,
@@ -22,6 +30,8 @@ from app.db.database import Database
 from app.services.request_service import ReportDeliveryError, RequestService
 
 router = Router(name="arrival")
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 
 def _normalize_arrival_field(value: Any) -> str | None:
@@ -33,11 +43,14 @@ def _normalize_arrival_field(value: Any) -> str | None:
 
 def _build_arrival_line_item(*, product_name: Any, quantity: Any, unit_price: Any) -> dict[str, str]:
     normalized_product = _normalize_arrival_field(product_name)
-    normalized_quantity = _normalize_arrival_field(quantity)
-    normalized_unit_price = _normalize_arrival_field(unit_price)
+    normalized_quantity_raw = _normalize_arrival_field(quantity)
+    normalized_unit_price_raw = _normalize_arrival_field(unit_price)
 
-    if not normalized_product or not normalized_quantity or not normalized_unit_price:
+    if not normalized_product or not normalized_quantity_raw or not normalized_unit_price_raw:
         raise ValueError("Arrival line item requires product name, quantity, and unit price")
+
+    normalized_quantity = format_numeric_value(normalized_quantity_raw)
+    normalized_unit_price = format_numeric_value(normalized_unit_price_raw)
 
     return {
         "product_name": normalized_product,
@@ -206,7 +219,6 @@ async def arrival_select_warehouse(
         warehouse_id=warehouse_id,
         warehouse=warehouse["name"],
         photos=[],
-        no_invoice=False,
         line_items=[],
         current_product_name=None,
         current_quantity=None,
@@ -243,6 +255,9 @@ async def arrival_quantity(message: Message, state: FSMContext, db: Database) ->
     if not quantity:
         await message.answer(t("quantity_prompt", lang))
         return
+    if not is_valid_numeric_value(quantity):
+        await message.answer(t("quantity_numeric_invalid", lang))
+        return
     await state.update_data(current_quantity=quantity)
     await state.set_state(ArrivalStates.waiting_unit_price)
     await message.answer(t("unit_price_prompt", lang))
@@ -254,6 +269,9 @@ async def arrival_unit_price(message: Message, state: FSMContext, db: Database) 
     unit_price = message.text.strip()
     if not unit_price:
         await message.answer(t("unit_price_prompt", lang))
+        return
+    if not is_valid_numeric_value(unit_price):
+        await message.answer(t("unit_price_numeric_invalid", lang))
         return
 
     data = await state.get_data()
@@ -295,7 +313,7 @@ async def arrival_add_more_item(callback: CallbackQuery, state: FSMContext, db: 
 @router.callback_query(ArrivalStates.confirming_items, F.data == "arrival:items_done")
 async def arrival_items_done(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
     lang = await get_user_language(db, callback.from_user)
-    await state.update_data(photos=[], no_invoice=False)
+    await state.update_data(photos=[])
     await state.set_state(ArrivalStates.collecting_photos)
     if callback.message:
         await clear_inline_keyboard(callback)
@@ -341,15 +359,7 @@ async def arrival_collect_photos(message: Message, state: FSMContext, db: Databa
     data = await state.get_data()
     photos = list(data.get("photos", []))
     photo = message.photo[-1]
-    photos.append(
-        {
-            "telegram_file_id": photo.file_id,
-            "telegram_file_unique_id": photo.file_unique_id,
-            "width": photo.width,
-            "height": photo.height,
-            "file_size": photo.file_size,
-        }
-    )
+    photos.append(serialize_telegram_photo(photo))
     await state.update_data(photos=photos)
 
     user = await db.get_user_by_telegram_id(message.from_user.id)
@@ -376,12 +386,15 @@ async def arrival_without_invoice_photo(
     db: Database,
 ) -> None:
     lang = await get_user_language(db, callback.from_user)
-    await state.update_data(no_invoice=True, photos=[])
-    await state.set_state(ArrivalStates.manual_input)
     if callback.message:
         await clear_inline_keyboard(callback)
-        await callback.message.answer(t("manual_text_prompt", lang))
-    await callback.answer()
+        await callback.message.answer(
+            t("photo_required_error", lang),
+            reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:items"),
+        )
+    await state.update_data(photos=[])
+    await state.set_state(ArrivalStates.collecting_photos)
+    await callback.answer(t("photo_required_error", lang), show_alert=True)
 
 
 @router.callback_query(ArrivalStates.collecting_photos, F.data == "arrival:photos_done")
@@ -409,15 +422,11 @@ async def arrival_photos_done(callback: CallbackQuery, state: FSMContext, db: Da
 @router.message(ArrivalStates.manual_input, F.text)
 async def arrival_manual_text(message: Message, state: FSMContext, db: Database) -> None:
     lang = await get_user_language(db, message.from_user)
-    manual_info = message.text.strip()
-
-    if not manual_info:
-        await message.answer(t("manual_text_prompt", lang))
-        return
-
-    await state.update_data(info_text=manual_info)
-    await state.set_state(ArrivalStates.waiting_supplier)
-    await message.answer(t("supplier_prompt", lang))
+    await state.set_state(ArrivalStates.collecting_photos)
+    await message.answer(
+        t("arrival_photo_prompt", lang),
+        reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:items"),
+    )
 
 
 @router.message(ArrivalStates.waiting_supplier, F.text)
@@ -525,9 +534,13 @@ async def arrival_photo_only(message: Message, db: Database) -> None:
 
 
 @router.message(ArrivalStates.manual_input)
-async def arrival_manual_text_required(message: Message, db: Database) -> None:
+async def arrival_manual_text_required(message: Message, state: FSMContext, db: Database) -> None:
     lang = await get_user_language(db, message.from_user)
-    await message.answer(t("manual_text_prompt", lang))
+    await state.set_state(ArrivalStates.collecting_photos)
+    await message.answer(
+        t("arrival_photo_prompt", lang),
+        reply_markup=arrival_photo_keyboard(lang, back_callback="arrival:back:items"),
+    )
 
 
 @router.message(ArrivalStates.waiting_supplier)
@@ -560,7 +573,7 @@ async def arrival_back_to_branch(callback: CallbackQuery, state: FSMContext, db:
 @router.callback_query(ArrivalStates.collecting_photos, F.data == "arrival:back:items")
 async def arrival_back_to_items(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
     lang = await get_user_language(db, callback.from_user)
-    await state.update_data(photos=[], no_invoice=False)
+    await state.update_data(photos=[])
     await state.set_state(ArrivalStates.confirming_items)
     if callback.message:
         await clear_inline_keyboard(callback)

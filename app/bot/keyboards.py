@@ -81,7 +81,6 @@ def transfer_kind_keyboard(lang: str, *, back_callback: str | None = None) -> In
 def arrival_photo_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t("finish_upload", lang), callback_data="arrival:photos_done")
-    builder.button(text=t("arrival_no_photo", lang), callback_data="arrival:no_photo")
     if back_callback:
         builder.button(text=t("back", lang), callback_data=back_callback)
     builder.adjust(1)
@@ -98,10 +97,19 @@ def arrival_items_keyboard(lang: str, *, back_callback: str | None = None) -> In
     return builder.as_markup()
 
 
+def transfer_items_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("arrival_add_more", lang), callback_data="transfer:add_more")
+    builder.button(text=t("arrival_continue", lang), callback_data="transfer:items_done")
+    if back_callback:
+        builder.button(text=t("back", lang), callback_data=back_callback)
+    builder.adjust(2, 1)
+    return builder.as_markup()
+
+
 def transfer_photo_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t("finish_upload", lang), callback_data="transfer:photos_done")
-    builder.button(text=t("skip_photos", lang), callback_data="transfer:photos_skip")
     if back_callback:
         builder.button(text=t("back", lang), callback_data=back_callback)
     builder.adjust(1)

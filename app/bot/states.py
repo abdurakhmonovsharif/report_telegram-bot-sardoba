@@ -27,5 +27,6 @@ class TransferStates(StatesGroup):
     selecting_warehouse = State()
     waiting_product_name = State()
     waiting_quantity = State()
+    confirming_items = State()
     waiting_comment = State()
     collecting_optional_photos = State()

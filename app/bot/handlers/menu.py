@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import F, Router
+from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
@@ -12,6 +13,7 @@ from app.config import Settings
 from app.db.database import Database
 
 router = Router(name="menu")
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 
 @router.callback_query(F.data == "nav:main_menu")

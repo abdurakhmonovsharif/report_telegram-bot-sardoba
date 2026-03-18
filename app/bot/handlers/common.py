@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 
 from aiogram.types import CallbackQuery, User
 
 from app.bot.i18n import SUPPORTED_LANGUAGES
+from app.core.numeric import format_numeric_value, is_valid_numeric_value
 from app.db.database import Database
 
 
@@ -45,3 +47,13 @@ async def clear_inline_keyboard(callback: CallbackQuery) -> None:
         await callback.message.delete()
     except Exception:
         return
+
+
+def serialize_telegram_photo(photo: Any) -> dict[str, Any]:
+    return {
+        "telegram_file_id": photo.file_id,
+        "telegram_file_unique_id": photo.file_unique_id,
+        "width": photo.width,
+        "height": photo.height,
+        "file_size": photo.file_size,
+    }

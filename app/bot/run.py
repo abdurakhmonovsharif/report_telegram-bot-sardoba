@@ -20,6 +20,7 @@ def build_dispatcher() -> Dispatcher:
     dispatcher = Dispatcher(storage=MemoryStorage())
     dispatcher.update.middleware(ErrorLoggingMiddleware())
 
+    dispatcher.include_router(start.group_router)
     dispatcher.include_router(start.router)
     dispatcher.include_router(menu.router)
     dispatcher.include_router(arrival.router)

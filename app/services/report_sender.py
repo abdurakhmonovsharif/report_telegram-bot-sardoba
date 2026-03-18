@@ -11,6 +11,7 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import InputMediaPhoto
 
 from app.config import Settings
+from app.core.numeric import format_numeric_value, is_valid_numeric_value
 from app.db.database import Database
 
 
@@ -191,9 +192,14 @@ class ReportSender:
         if line_items:
             return " + ".join(ReportSender._format_line_item(item) for item in line_items)
         nomenclature_parts = [
-            str(value).strip()
-            for value in (request_record.get("product_name"), request_record.get("quantity"))
-            if value and str(value).strip()
+            ReportSender._format_numeric_display(value, fallback=ReportSender._normalize_display_value(value))
+            if key == "quantity"
+            else ReportSender._normalize_display_value(value)
+            for key, value in (
+                ("product_name", request_record.get("product_name")),
+                ("quantity", request_record.get("quantity")),
+            )
+            if value and ReportSender._normalize_display_value(value)
         ]
         return " + ".join(nomenclature_parts) or "Нет данных"
 
@@ -215,8 +221,8 @@ class ReportSender:
                 continue
 
             product_name = str(raw_item.get("product_name") or "").strip()
-            quantity = str(raw_item.get("quantity") or "").strip()
-            unit_price = str(raw_item.get("unit_price") or "").strip()
+            quantity = ReportSender._format_numeric_display(raw_item.get("quantity"))
+            unit_price = ReportSender._format_numeric_display(raw_item.get("unit_price"))
             if not product_name or not quantity:
                 continue
 
@@ -232,8 +238,8 @@ class ReportSender:
     @staticmethod
     def _format_line_item(line_item: Mapping[str, Any]) -> str:
         product_name = escape(str(line_item.get("product_name") or "").strip() or "Нет данных")
-        quantity = escape(str(line_item.get("quantity") or "").strip() or "Нет данных")
-        unit_price = escape(str(line_item.get("unit_price") or "").strip())
+        quantity = escape(ReportSender._format_numeric_display(line_item.get("quantity"), fallback="Нет данных"))
+        unit_price = escape(ReportSender._format_numeric_display(line_item.get("unit_price")))
         if unit_price:
             return f"• {product_name} — {quantity} × {unit_price}"
         return f"• {product_name} — {quantity}"
@@ -258,6 +264,19 @@ class ReportSender:
         if photos_count == 1:
             return "1 шт."
         return f"{photos_count} шт."
+
+    @staticmethod
+    def _normalize_display_value(value: Any) -> str:
+        return str(value).strip() if value is not None else ""
+
+    @staticmethod
+    def _format_numeric_display(value: Any, *, fallback: str = "") -> str:
+        normalized = ReportSender._normalize_display_value(value)
+        if not normalized:
+            return fallback
+        if is_valid_numeric_value(normalized):
+            return format_numeric_value(normalized)
+        return normalized
 
     def _build_transfer_caption(
         self,

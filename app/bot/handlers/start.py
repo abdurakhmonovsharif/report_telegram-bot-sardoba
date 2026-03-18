@@ -21,6 +21,9 @@ from app.bot.states import OnboardingStates
 from app.db.database import Database
 
 router = Router(name="start")
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
+group_router = Router(name="start_group")
 START_BUTTON_TEXTS = tuple(TRANSLATIONS["start_button"].values())
 
 
@@ -226,7 +229,7 @@ async def cancel_command(message: Message, state: FSMContext, db: Database) -> N
     await message.answer(t("start_prompt", lang), reply_markup=start_entry_keyboard(lang))
 
 
-@router.message(Command("setgroup"))
+@group_router.message(Command("setgroup"))
 async def setgroup_command(
     message: Message,
     command: CommandObject,

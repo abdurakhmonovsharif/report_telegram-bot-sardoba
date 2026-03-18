@@ -141,7 +141,22 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Введите цену (за 1 кг или 1 штуку). Пример: 140 000",
         "en": "Enter the price (per 1 kg or 1 piece). Example: 140 000",
     },
+    "quantity_numeric_invalid": {
+        "uz": "Faqat son kiriting. Namuna: 7, 7.5 yoki 1 000",
+        "ru": "Введите только число. Пример: 7, 7.5 или 1 000",
+        "en": "Enter numbers only. Example: 7, 7.5, or 1 000",
+    },
+    "unit_price_numeric_invalid": {
+        "uz": "Narx uchun faqat son kiriting. Namuna: 8 000 yoki 140 000.5",
+        "ru": "Введите для цены только число. Пример: 8 000 или 140 000.5",
+        "en": "Enter numbers only for price. Example: 8 000 or 140 000.5",
+    },
     "arrival_items_prompt": {
+        "uz": "Kiritilgan mahsulotlar:\n{items}\n\nYana mahsulot qo'shasizmi yoki davom etasizmi?",
+        "ru": "Добавленные товары:\n{items}\n\nДобавить еще товар или продолжить?",
+        "en": "Added products:\n{items}\n\nDo you want to add another product or continue?",
+    },
+    "transfer_items_prompt": {
         "uz": "Kiritilgan mahsulotlar:\n{items}\n\nYana mahsulot qo'shasizmi yoki davom etasizmi?",
         "ru": "Добавленные товары:\n{items}\n\nДобавить еще товар или продолжить?",
         "en": "Added products:\n{items}\n\nDo you want to add another product or continue?",
@@ -157,9 +172,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Continue",
     },
     "arrival_photo_prompt": {
-        "uz": "Nakladnoy rasmlarini yuboring. Tugatganda tugmani bosing yoki \"Nakladnoy yo'q\" ni tanlang.",
-        "ru": "Отправьте фото накладной. После загрузки нажмите завершить или выберите \"Накладной нет\".",
-        "en": "Upload invoice photos. Press finish when done or choose \"No invoice photo\".",
+        "uz": "Nakladnoy rasmlarini yuboring. Kamida 1 ta rasm majburiy. Yuklab bo'lgach tugmani bosing.",
+        "ru": "Отправьте фото накладной. Минимум 1 фото обязательно. После загрузки нажмите завершить.",
+        "en": "Upload invoice photos. At least 1 photo is required. Press finish after uploading.",
     },
     "arrival_photo_done": {
         "uz": "Yuklangan rasmlar soni: {count}",
@@ -212,9 +227,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Write a comment about moved products:",
     },
     "transfer_photo_prompt": {
-        "uz": "Rasm yuborish ixtiyoriy. Rasm yuboring yoki o'tkazib yuboring.",
-        "ru": "Фото необязательно. Загрузите фото или пропустите.",
-        "en": "Photos are optional. Upload photos or skip.",
+        "uz": "Rasm yuboring. Kamida 1 ta rasm majburiy. Yuklab bo'lgach tugmani bosing.",
+        "ru": "Отправьте фото. Минимум 1 фото обязательно. После загрузки нажмите завершить.",
+        "en": "Upload photos. At least 1 photo is required. Press finish after uploading.",
     },
     "skip_photos": {
         "uz": "Rasmsiz davom etish",
@@ -232,9 +247,14 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Request saved, but delivery to the group failed. Administrator was notified.",
     },
     "upload_photo_or_finish": {
-        "uz": "Iltimos, rasm yuboring yoki tugatish tugmasini bosing.",
-        "ru": "Отправьте фото или нажмите завершить.",
-        "en": "Upload a photo or press finish.",
+        "uz": "Avval kamida 1 ta rasm yuboring, keyin tugatish tugmasini bosing.",
+        "ru": "Сначала загрузите хотя бы 1 фото, затем нажмите завершить.",
+        "en": "Upload at least 1 photo first, then press finish.",
+    },
+    "photo_required_error": {
+        "uz": "Bu operatsiya uchun rasm majburiy. Kamida 1 ta rasm yuboring.",
+        "ru": "Для этой операции фото обязательно. Загрузите хотя бы 1 фото.",
+        "en": "A photo is required for this operation. Upload at least 1 photo.",
     },
     "safe_error": {
         "uz": "Server xatosi yuz berdi. Iltimos, keyinroq urinib ko'ring.",
