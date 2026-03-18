@@ -6,7 +6,7 @@ services:
     container_name: sardoba_bot_backend
     restart: unless-stopped
     ports:
-      - "${PORT}:${PORT}"
+      - "9000:9000"
     env_file:
       - .env
     environment:
