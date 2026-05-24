@@ -1,3 +1,6 @@
+ALTER TABLE requests
+    DROP CONSTRAINT IF EXISTS requests_operation_type_check;
+
 UPDATE requests
 SET
     operation_type = 'act_razbora',
@@ -16,9 +19,6 @@ SET
     code = 'AKT-' || TO_CHAR(COALESCE(created_at, NOW()), 'YYYYMMDD') || '-' || LPAD(id::TEXT, 6, '0'),
     updated_at = NOW()
 WHERE operation_type = 'transfer';
-
-ALTER TABLE requests
-    DROP CONSTRAINT IF EXISTS requests_operation_type_check;
 
 ALTER TABLE requests
     ADD CONSTRAINT requests_operation_type_check
