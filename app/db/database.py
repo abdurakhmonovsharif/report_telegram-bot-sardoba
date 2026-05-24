@@ -11,6 +11,7 @@ from app.config import Settings
 from app.core.security import hash_password, validate_admin_login, validate_admin_password
 
 STATIC_WAREHOUSE_SLUGS = ("bar", "kitchen", "supplies", "meat")
+MIGRATION_ADVISORY_LOCK_ID = 771_240_507_001
 
 
 def _record_to_dict(record: asyncpg.Record | None) -> dict[str, Any] | None:
@@ -88,41 +89,49 @@ class Database:
         migrations_dir = base_dir / "migrations"
 
         async with pool.acquire() as connection:
-            if schema_file.exists():
-                schema_sql = schema_file.read_text(encoding="utf-8")
-                if schema_sql.strip():
-                    try:
-                        await connection.execute(schema_sql)
-                    except Exception as exc:
-                        if "already exists" not in str(exc).lower():
-                            raise
+            await connection.execute("SELECT pg_advisory_lock($1::BIGINT)", MIGRATION_ADVISORY_LOCK_ID)
+            try:
+                if schema_file.exists():
+                    schema_sql = schema_file.read_text(encoding="utf-8")
+                    if schema_sql.strip():
+                        try:
+                            await connection.execute(schema_sql)
+                        except Exception as exc:
+                            if "already exists" not in str(exc).lower():
+                                raise
 
-            await connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS schema_migrations (
-                    version TEXT PRIMARY KEY,
-                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                await connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS schema_migrations (
+                        version TEXT PRIMARY KEY,
+                        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                    """
                 )
-                """
-            )
 
-            applied_versions = {
-                row["version"]
-                for row in await connection.fetch("SELECT version FROM schema_migrations")
-            }
+                applied_versions = {
+                    row["version"]
+                    for row in await connection.fetch("SELECT version FROM schema_migrations")
+                }
 
-            if migrations_dir.exists():
-                for migration_file in sorted(migrations_dir.glob("*.sql")):
-                    if migration_file.name in applied_versions:
-                        continue
+                if migrations_dir.exists():
+                    for migration_file in sorted(migrations_dir.glob("*.sql")):
+                        if migration_file.name in applied_versions:
+                            continue
 
-                    migration_sql = migration_file.read_text(encoding="utf-8")
-                    async with connection.transaction():
-                        await connection.execute(migration_sql)
-                        await connection.execute(
-                            "INSERT INTO schema_migrations (version) VALUES ($1)",
-                            migration_file.name,
-                        )
+                        migration_sql = migration_file.read_text(encoding="utf-8")
+                        async with connection.transaction():
+                            await connection.execute(migration_sql)
+                            await connection.execute(
+                                """
+                                INSERT INTO schema_migrations (version)
+                                VALUES ($1)
+                                ON CONFLICT (version) DO NOTHING
+                                """,
+                                migration_file.name,
+                            )
+            finally:
+                await connection.execute("SELECT pg_advisory_unlock($1::BIGINT)", MIGRATION_ADVISORY_LOCK_ID)
 
     # ========================
     # ADMIN SEED
