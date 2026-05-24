@@ -87,10 +87,16 @@ def arrival_items_keyboard(lang: str, *, back_callback: str | None = None) -> In
     return builder.as_markup()
 
 
-def act_razbora_items_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
+def act_razbora_items_keyboard(
+    lang: str,
+    *,
+    has_items: bool = False,
+    back_callback: str | None = None,
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=t("arrival_add_more", lang), callback_data="act_razbora:add_more")
-    builder.button(text=t("arrival_continue", lang), callback_data="act_razbora:items_done")
+    add_label = "act_razbora_add_more" if has_items else "act_razbora_add_nomenclature"
+    builder.button(text=t(add_label, lang), callback_data="act_razbora:add_more")
+    builder.button(text=t("act_razbora_finish", lang), callback_data="act_razbora:items_done")
     if back_callback:
         builder.button(text=t("back", lang), callback_data=back_callback)
     builder.adjust(2, 1)

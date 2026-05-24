@@ -19,6 +19,7 @@ from app.bot.handlers.act_razbora import (
 )
 from app.bot.handlers.start import _normalize_operation_group_target
 from app.bot.i18n import t
+from app.bot.keyboards import act_razbora_items_keyboard
 from app.bot.states import ActRazboraStates, ArrivalStates
 from app.core.numeric import format_numeric_value, is_valid_numeric_value
 from app.services.report_sender import ReportSender
@@ -135,6 +136,18 @@ class NumericFormattingTests(unittest.TestCase):
         self.assertEqual(_normalize_operation_group_target("aktrazbora"), "act_razbora")
         self.assertEqual(_normalize_operation_group_target("act-razbora"), "act_razbora")
         self.assertIsNone(_normalize_operation_group_target("bar"))
+
+    def test_act_razbora_empty_items_keyboard_prompts_add_and_finish(self) -> None:
+        markup = act_razbora_items_keyboard("uz", has_items=False)
+
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Nomenklatura qo‘shish")
+        self.assertEqual(markup.inline_keyboard[0][1].text, "Yakunlash")
+
+    def test_act_razbora_existing_items_keyboard_prompts_add_more_and_finish(self) -> None:
+        markup = act_razbora_items_keyboard("uz", has_items=True)
+
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Yana qo‘shish")
+        self.assertEqual(markup.inline_keyboard[0][1].text, "Yakunlash")
 
 
 class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):

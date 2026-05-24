@@ -137,9 +137,24 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "No nomenclature has been added yet.",
     },
     "act_razbora_items_prompt": {
-        "uz": "Asosiy mahsulot: {product}\nJami: {quantity} kg\n\nNomenklatura:\n{items}\n\nNomenklatura qo'shasizmi yoki yakunlaysizmi?",
+        "uz": "Asosiy mahsulot: {product}\nJami: {quantity} kg\n\nNomenklatura:\n{items}\n\nNomenklatura qo‘shasizmi yoki yakunlaysizmi?",
         "ru": "Основной продукт: {product}\nИтого: {quantity} кг\n\nНоменклатура:\n{items}\n\nДобавить номенклатуру или завершить?",
         "en": "Main product: {product}\nTotal: {quantity} kg\n\nNomenclature:\n{items}\n\nAdd nomenclature or finish?",
+    },
+    "act_razbora_add_nomenclature": {
+        "uz": "Nomenklatura qo‘shish",
+        "ru": "Добавить номенклатуру",
+        "en": "Add nomenclature",
+    },
+    "act_razbora_add_more": {
+        "uz": "Yana qo‘shish",
+        "ru": "Добавить еще",
+        "en": "Add another",
+    },
+    "act_razbora_finish": {
+        "uz": "Yakunlash",
+        "ru": "Завершить",
+        "en": "Finish",
     },
     "act_razbora_quantity_exceeded": {
         "uz": "Nomenklatura jami asosiy {total} kg dan oshmasligi kerak.",

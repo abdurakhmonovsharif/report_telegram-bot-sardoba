@@ -103,7 +103,11 @@ async def _show_items_prompt(
             quantity=data.get("quantity"),
             items=items_text,
         ),
-        reply_markup=act_razbora_items_keyboard(lang, back_callback="act_razbora:back:nomenclature_quantity"),
+        reply_markup=act_razbora_items_keyboard(
+            lang,
+            has_items=bool(items),
+            back_callback="act_razbora:back:nomenclature_quantity",
+        ),
     )
 
 
