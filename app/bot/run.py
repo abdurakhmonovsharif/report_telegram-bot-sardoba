@@ -69,7 +69,7 @@ async def run_bot() -> None:
         )
         await bot.set_my_commands(
             commands=[
-                BotCommand(command="setgroup", description="Привязать текущую группу к складу"),
+                BotCommand(command="setgroup", description="Привязать текущую группу к отчетам"),
             ],
             scope=BotCommandScopeAllGroupChats(),
         )

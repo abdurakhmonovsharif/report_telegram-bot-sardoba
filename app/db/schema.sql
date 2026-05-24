@@ -45,6 +45,15 @@ CREATE TABLE IF NOT EXISTS warehouses (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS operation_group_bindings (
+    operation_type TEXT PRIMARY KEY CHECK (operation_type IN ('act_razbora')),
+    group_chat_id BIGINT NOT NULL,
+    group_chat_title TEXT,
+    group_linked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS requests (
     id BIGSERIAL PRIMARY KEY,
     code TEXT UNIQUE,
@@ -135,6 +144,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_warehouses_name_lower ON warehouses (LOWER
 CREATE UNIQUE INDEX IF NOT EXISTS idx_warehouses_slug ON warehouses (slug) WHERE slug IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_warehouses_group_chat_id ON warehouses (group_chat_id) WHERE group_chat_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_warehouses_active ON warehouses (is_active, sort_order, id);
+CREATE INDEX IF NOT EXISTS idx_operation_group_bindings_group_chat_id ON operation_group_bindings (group_chat_id);
 CREATE INDEX IF NOT EXISTS idx_requests_created_at ON requests (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_requests_operation_type ON requests (operation_type);
 CREATE INDEX IF NOT EXISTS idx_requests_branch_id ON requests (branch_id);

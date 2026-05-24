@@ -58,8 +58,9 @@ Warehouse Telegram groups are normally linked directly from Telegram, not from `
    - `/setgroup kitchen`
    - `/setgroup supplies`
    - `/setgroup meat`
+   - `/setgroup aktrazbora`
 
-The bot stores `chat_id` in the database on the corresponding warehouse row and starts using that group for notifications.
+The bot stores `chat_id` in the database and starts using that group for matching notifications. Warehouse commands bind warehouse reports; `/setgroup aktrazbora` binds `Акт разбора` reports to that group.
 
 ## Backend API groups
 

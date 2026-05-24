@@ -25,6 +25,15 @@ router.message.filter(F.chat.type == ChatType.PRIVATE)
 router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 group_router = Router(name="start_group")
 START_BUTTON_TEXTS = tuple(TRANSLATIONS["start_button"].values())
+ACT_RAZBORA_SETGROUP_ALIASES = {
+    "aktrazbora",
+    "akt_razbora",
+    "akt-razbora",
+    "actrazbora",
+    "act_razbora",
+    "act-razbora",
+    "актразбора",
+}
 
 
 async def _ensure_avatar(bot: Bot, db: Database, telegram_id: int) -> None:
@@ -58,6 +67,21 @@ async def _is_group_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     except Exception:
         return False
     return member.status in {ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR}
+
+
+def _normalize_operation_group_target(value: str) -> str | None:
+    normalized = (
+        value.strip()
+        .lower()
+        .replace(" ", "")
+        .replace("’", "'")
+        .replace("`", "'")
+        .replace("ʻ", "'")
+        .replace("‘", "'")
+    )
+    if normalized in ACT_RAZBORA_SETGROUP_ALIASES:
+        return "act_razbora"
+    return None
 
 
 @router.message(CommandStart())
@@ -249,6 +273,44 @@ async def setgroup_command(
 
     raw_parts = (command.args or "").strip().split(maxsplit=1) if command else []
     raw_slug = raw_parts[0] if raw_parts else ""
+    operation_type = _normalize_operation_group_target(raw_slug)
+    if operation_type == "act_razbora":
+        updated = await db.bind_operation_group(
+            operation_type=operation_type,
+            group_chat_id=int(message.chat.id),
+            group_chat_title=message.chat.title,
+        )
+        if updated is None:
+            await message.answer(t("safe_error", lang))
+            return
+
+        await db.log_event(
+            level="INFO",
+            event_type="operation_group_bound",
+            message="Operation group binding updated from Telegram command",
+            context={
+                "operation_type": operation_type,
+                "group_chat_id": message.chat.id,
+                "group_chat_title": message.chat.title,
+                "telegram_user_id": message.from_user.id,
+            },
+        )
+        await db.log_audit(
+            actor_type="telegram_user",
+            actor_user_id=user["id"],
+            action_type="operation_group_bound",
+            entity_type="operation_group",
+            message="Пользователь привязал Telegram-группу к операции через команду /setgroup.",
+            meta={
+                "operation_type": operation_type,
+                "group_chat_id": message.chat.id,
+                "group_chat_title": message.chat.title,
+            },
+        )
+
+        await message.answer(t("setgroup_operation_success", lang, operation=t("act_razbora", lang)))
+        return
+
     warehouse_slug = db.settings.normalize_warehouse_slug(raw_slug)
     if warehouse_slug not in {"bar", "kitchen", "supplies", "meat"}:
         await message.answer(t("setgroup_unknown_warehouse", lang))

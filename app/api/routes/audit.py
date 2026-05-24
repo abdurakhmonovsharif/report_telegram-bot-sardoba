@@ -43,6 +43,7 @@ ACTION_TYPE_LABELS = {
     "warehouse_created": "Создание склада",
     "warehouse_updated": "Обновление склада",
     "warehouse_group_bound": "Привязка группы к складу",
+    "operation_group_bound": "Привязка группы к операции",
 }
 
 

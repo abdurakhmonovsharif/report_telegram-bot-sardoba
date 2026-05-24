@@ -517,6 +517,53 @@ class Database:
             group_chat_title,
         )
 
+    async def get_operation_group_binding(self, operation_type: str) -> dict[str, Any] | None:
+        return await self.fetchrow(
+            """
+            SELECT
+                operation_type,
+                group_chat_id,
+                group_chat_title,
+                group_linked_at,
+                created_at,
+                updated_at
+            FROM operation_group_bindings
+            WHERE operation_type = $1
+            """,
+            operation_type,
+        )
+
+    async def bind_operation_group(
+        self,
+        *,
+        operation_type: str,
+        group_chat_id: int,
+        group_chat_title: str | None,
+    ) -> dict[str, Any] | None:
+        return await self.fetchrow(
+            """
+            INSERT INTO operation_group_bindings (
+                operation_type,
+                group_chat_id,
+                group_chat_title,
+                group_linked_at,
+                created_at,
+                updated_at
+            )
+            VALUES ($1, $2, $3, NOW(), NOW(), NOW())
+            ON CONFLICT (operation_type)
+            DO UPDATE SET
+                group_chat_id = EXCLUDED.group_chat_id,
+                group_chat_title = EXCLUDED.group_chat_title,
+                group_linked_at = NOW(),
+                updated_at = NOW()
+            RETURNING *
+            """,
+            operation_type,
+            group_chat_id,
+            group_chat_title,
+        )
+
     # ========================
     # ADMIN USERS
     # ========================

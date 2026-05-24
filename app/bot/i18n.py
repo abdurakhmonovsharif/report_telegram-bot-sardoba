@@ -257,9 +257,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Please use the buttons.",
     },
     "setgroup_usage": {
-        "uz": "Guruhda /setgroup bar, /setgroup kitchen, /setgroup supplies yoki /setgroup meat ko'rinishida yuboring.",
-        "ru": "В группе отправьте /setgroup bar, /setgroup kitchen, /setgroup supplies или /setgroup meat.",
-        "en": "In the group send /setgroup bar, /setgroup kitchen, /setgroup supplies or /setgroup meat.",
+        "uz": "Guruhda /setgroup bar, /setgroup kitchen, /setgroup supplies, /setgroup meat yoki /setgroup aktrazbora ko'rinishida yuboring.",
+        "ru": "В группе отправьте /setgroup bar, /setgroup kitchen, /setgroup supplies, /setgroup meat или /setgroup aktrazbora.",
+        "en": "In the group send /setgroup bar, /setgroup kitchen, /setgroup supplies, /setgroup meat or /setgroup aktrazbora.",
     },
     "setgroup_group_only": {
         "uz": "Bu buyruq faqat guruh ichida ishlaydi.",
@@ -272,14 +272,19 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Only a group admin can use this command.",
     },
     "setgroup_unknown_warehouse": {
-        "uz": "Noto'g'ri sklad. Ruxsat etilgan qiymatlar: bar, kitchen, supplies, meat.",
-        "ru": "Неверный склад. Допустимые значения: bar, kitchen, supplies, meat.",
-        "en": "Unknown warehouse. Allowed values: bar, kitchen, supplies, meat.",
+        "uz": "Noto'g'ri guruh turi. Ruxsat etilgan qiymatlar: bar, kitchen, supplies, meat, aktrazbora.",
+        "ru": "Неверный тип группы. Допустимые значения: bar, kitchen, supplies, meat, aktrazbora.",
+        "en": "Unknown group type. Allowed values: bar, kitchen, supplies, meat, aktrazbora.",
     },
     "setgroup_success": {
         "uz": "\"{warehouse}\" skladi ushbu guruhga biriktirildi.",
         "ru": "Склад \"{warehouse}\" привязан к этой группе.",
         "en": "Warehouse \"{warehouse}\" has been linked to this group.",
+    },
+    "setgroup_operation_success": {
+        "uz": "\"{operation}\" xabarlari ushbu guruhga biriktirildi.",
+        "ru": "Отчеты \"{operation}\" привязаны к этой группе.",
+        "en": "\"{operation}\" reports have been linked to this group.",
     },
 }
 

@@ -17,6 +17,7 @@ from app.bot.handlers.act_razbora import (
     act_razbora_product_name,
     act_razbora_total_quantity,
 )
+from app.bot.handlers.start import _normalize_operation_group_target
 from app.bot.i18n import t
 from app.bot.states import ActRazboraStates, ArrivalStates
 from app.core.numeric import format_numeric_value, is_valid_numeric_value
@@ -105,6 +106,14 @@ class FakeBot:
         self.messages.append({"chat_id": chat_id, "text": text})
 
 
+class FakeReportDB:
+    def __init__(self, binding: dict | None = None) -> None:
+        self.binding = binding
+
+    async def get_operation_group_binding(self, operation_type: str) -> dict | None:
+        return self.binding if operation_type == "act_razbora" else None
+
+
 def make_user() -> SimpleNamespace:
     return SimpleNamespace(
         id=101,
@@ -121,6 +130,11 @@ class NumericFormattingTests(unittest.TestCase):
         self.assertFalse(is_valid_numeric_value("140  000"))
         self.assertEqual(format_numeric_value("140000"), "140 000")
         self.assertEqual(format_numeric_value("140 000"), "140 000")
+
+    def test_setgroup_normalizes_act_razbora_alias(self) -> None:
+        self.assertEqual(_normalize_operation_group_target("aktrazbora"), "act_razbora")
+        self.assertEqual(_normalize_operation_group_target("act-razbora"), "act_razbora")
+        self.assertIsNone(_normalize_operation_group_target("bar"))
 
 
 class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
@@ -332,7 +346,7 @@ class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
         sender = ReportSender(
             bot=bot,
             settings=SimpleNamespace(default_report_chat_id=-100123),
-            db=SimpleNamespace(),
+            db=FakeReportDB(),
         )
 
         await sender.send_request_report(
@@ -351,6 +365,30 @@ class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(bot.messages[0]["chat_id"], -100123)
         self.assertIn("🧾 <b>Акт разбора</b>", bot.messages[0]["text"])
+
+    async def test_report_sender_prefers_bound_act_razbora_group(self) -> None:
+        bot = FakeBot()
+        sender = ReportSender(
+            bot=bot,
+            settings=SimpleNamespace(default_report_chat_id=-100123),
+            db=FakeReportDB(binding={"group_chat_id": -100999}),
+        )
+
+        await sender.send_request_report(
+            request_record={
+                "id": 11,
+                "operation_type": "act_razbora",
+                "branch": "Geofizika",
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "line_items": [],
+            },
+            photos=[],
+            user_record={"name": "Ali Valiyev", "phone_number": "+998901234567"},
+        )
+
+        self.assertEqual(bot.messages[0]["chat_id"], -100999)
 
 
 class ActRazboraFlowTests(unittest.IsolatedAsyncioTestCase):

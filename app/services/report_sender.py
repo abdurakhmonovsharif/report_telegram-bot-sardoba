@@ -36,7 +36,12 @@ class ReportSender:
     ) -> None:
         branch = request_record["branch"]
         if request_record.get("operation_type") == "act_razbora":
-            target_group_id = self.settings.default_report_chat_id
+            group_binding = await self.db.get_operation_group_binding("act_razbora")
+            target_group_id = (
+                int(group_binding["group_chat_id"])
+                if group_binding and group_binding.get("group_chat_id") is not None
+                else self.settings.default_report_chat_id
+            )
             if target_group_id is None:
                 raise ValueError("No Telegram group mapping for act_razbora reports")
 
