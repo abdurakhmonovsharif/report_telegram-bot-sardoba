@@ -7,8 +7,8 @@ from aiogram.types import CallbackQuery
 
 from app.bot.handlers.common import clear_inline_keyboard, ensure_user
 from app.bot.i18n import t
-from app.bot.keyboards import branch_keyboard, contact_request_keyboard, language_keyboard, main_menu_keyboard, transfer_kind_keyboard
-from app.bot.states import ArrivalStates, TransferStates
+from app.bot.keyboards import branch_keyboard, contact_request_keyboard, language_keyboard, main_menu_keyboard
+from app.bot.states import ActRazboraStates, ArrivalStates
 from app.config import Settings
 from app.db.database import Database
 
@@ -78,8 +78,8 @@ async def start_arrival_flow(
     await callback.answer()
 
 
-@router.callback_query(F.data == "menu:transfer")
-async def start_transfer_flow(
+@router.callback_query(F.data == "menu:act_razbora")
+async def start_act_razbora_flow(
     callback: CallbackQuery,
     state: FSMContext,
     db: Database,
@@ -104,20 +104,21 @@ async def start_transfer_flow(
         return
 
     await state.clear()
-    await state.set_state(TransferStates.selecting_transfer_kind)
-    await state.update_data(operation_type="transfer")
+    branches = await db.list_bot_branches()
+    await state.set_state(ActRazboraStates.selecting_branch)
+    await state.update_data(operation_type="act_razbora")
     await db.log_audit(
         actor_type="telegram_user",
         actor_user_id=user["id"],
-        action_type="transfer_flow_started",
+        action_type="act_razbora_flow_started",
         entity_type="request_draft",
-        message="Пользователь начал сценарий перемещения в Telegram-боте.",
+        message="Пользователь начал сценарий акта разбора в Telegram-боте.",
     )
 
     if callback.message:
         await clear_inline_keyboard(callback)
         await callback.message.answer(
-            t("select_transfer_kind", lang),
-            reply_markup=transfer_kind_keyboard(lang, back_callback="nav:main_menu"),
+            t("select_branch", lang),
+            reply_markup=branch_keyboard(branches, "act_razbora:branch", lang=lang, back_callback="nav:main_menu"),
         )
     await callback.answer()

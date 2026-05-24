@@ -32,7 +32,7 @@ ACTION_TYPE_LABELS = {
     "phone_shared": "Передача телефона",
     "language_selected": "Выбор языка",
     "arrival_flow_started": "Начало прихода",
-    "transfer_flow_started": "Начало перемещения",
+    "act_razbora_flow_started": "Начало акта разбора",
     "request_photo_uploaded": "Загрузка изображения",
     "request_created": "Создание операции",
     "request_report_sent": "Отправка отчета",

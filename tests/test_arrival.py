@@ -11,9 +11,14 @@ from app.bot.handlers.arrival import (
     arrival_quantity,
     arrival_unit_price,
 )
-from app.bot.handlers.transfer import transfer_finalize, transfer_product_name, transfer_quantity
+from app.bot.handlers.act_razbora import (
+    act_razbora_finalize,
+    act_razbora_nomenclature_quantity,
+    act_razbora_product_name,
+    act_razbora_total_quantity,
+)
 from app.bot.i18n import t
-from app.bot.states import ArrivalStates, TransferStates
+from app.bot.states import ActRazboraStates, ArrivalStates
 from app.core.numeric import format_numeric_value, is_valid_numeric_value
 from app.services.report_sender import ReportSender
 from app.services.request_service import ReportDeliveryError
@@ -90,6 +95,14 @@ class FakeRequestService:
 class FailingRequestService:
     async def finalize_request(self, **kwargs) -> dict:
         raise ReportDeliveryError(91)
+
+
+class FakeBot:
+    def __init__(self) -> None:
+        self.messages: list[dict] = []
+
+    async def send_message(self, *, chat_id: int, text: str) -> None:
+        self.messages.append({"chat_id": chat_id, "text": text})
 
 
 def make_user() -> SimpleNamespace:
@@ -279,24 +292,24 @@ class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
             caption.index("⚠️ <b>Номенклатура:</b>"),
         )
 
-    def test_report_sender_caption_lists_transfer_header(self) -> None:
+    def test_report_sender_caption_lists_act_razbora_header(self) -> None:
         sender = ReportSender(bot=SimpleNamespace(), settings=SimpleNamespace(), db=SimpleNamespace())
         caption = sender._build_caption(
             {
-                "operation_type": "transfer",
-                "transfer_type": "warehouse",
+                "operation_type": "act_razbora",
                 "branch": "Geofizika",
-                "warehouse": "Бар",
-                "source_warehouse": "Кухня",
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
                 "date": date(2026, 3, 18),
                 "line_items": [
                     {
-                        "product_name": "Olma",
-                        "quantity": "1000",
+                        "product_name": "Qiyma uchun",
+                        "quantity": "20",
                     },
                     {
-                        "product_name": "Guruch",
-                        "quantity": "10",
+                        "product_name": "Kabob uchun",
+                        "quantity": "15",
                     },
                 ],
             },
@@ -307,68 +320,137 @@ class ArrivalFlowTests(unittest.IsolatedAsyncioTestCase):
             photos_count=2,
         )
 
-        self.assertIn("🔄 <b>Peremesheniya</b>", caption)
-        self.assertIn("📤 <b>Со склада:</b> Кухня", caption)
-        self.assertIn("📥 <b>На склад:</b> Бар", caption)
-        self.assertIn("⚠️ <b>Номенклатура:</b>\n• Olma — 1 000\n• Guruch — 10", caption)
-        self.assertIn("📷 <b>Фото:</b> 2 шт.", caption)
+        self.assertIn("🧾 <b>Акт разбора</b>", caption)
+        self.assertIn("📍 <b>Филиал:</b> Geofizika", caption)
+        self.assertIn("🥩 <b>Маҳсулот:</b> Qo&#x27;y go&#x27;shti", caption)
+        self.assertIn("⚖️ <b>Жами кг:</b> 100 kg", caption)
+        self.assertIn("⚠️ <b>Номенклатура:</b>\n• Qiyma uchun — 20 kg\n• Kabob uchun — 15 kg", caption)
+        self.assertNotIn("📷 <b>Фото:</b>", caption)
+
+    async def test_report_sender_sends_act_razbora_to_default_group(self) -> None:
+        bot = FakeBot()
+        sender = ReportSender(
+            bot=bot,
+            settings=SimpleNamespace(default_report_chat_id=-100123),
+            db=SimpleNamespace(),
+        )
+
+        await sender.send_request_report(
+            request_record={
+                "id": 10,
+                "operation_type": "act_razbora",
+                "branch": "Geofizika",
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "line_items": [],
+            },
+            photos=[],
+            user_record={"name": "Ali Valiyev", "phone_number": "+998901234567"},
+        )
+
+        self.assertEqual(bot.messages[0]["chat_id"], -100123)
+        self.assertIn("🧾 <b>Акт разбора</b>", bot.messages[0]["text"])
 
 
-class TransferFlowTests(unittest.IsolatedAsyncioTestCase):
-    async def test_transfer_product_flow_is_sequential(self) -> None:
+class ActRazboraFlowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_act_razbora_product_flow_is_sequential(self) -> None:
         user = make_user()
         state = FakeState({})
 
-        product_message = FakeMessage(text="Suv", from_user=user)
-        await transfer_product_name(product_message, state, FakeDB())
+        product_message = FakeMessage(text="Qo'y go'shti", from_user=user)
+        await act_razbora_product_name(product_message, state, FakeDB())
 
-        self.assertIs(state.current_state, TransferStates.waiting_quantity)
-        self.assertEqual(state.data["current_product_name"], "Suv")
-        self.assertEqual(product_message.answers[0]["text"], t("quantity_prompt", "uz"))
+        self.assertIs(state.current_state, ActRazboraStates.waiting_total_quantity)
+        self.assertEqual(state.data["product_name"], "Qo'y go'shti")
+        self.assertEqual(product_message.answers[0]["text"], t("act_razbora_total_quantity_prompt", "uz"))
 
-        quantity_message = FakeMessage(text="10", from_user=user)
-        await transfer_quantity(quantity_message, state, FakeDB())
+        quantity_message = FakeMessage(text="100", from_user=user)
+        await act_razbora_total_quantity(quantity_message, state, FakeDB())
 
-        self.assertIs(state.current_state, TransferStates.confirming_items)
-        self.assertEqual(
-            state.data["line_items"],
-            [{"product_name": "Suv", "quantity": "10"}],
-        )
+        self.assertIs(state.current_state, ActRazboraStates.confirming_items)
+        self.assertEqual(state.data["quantity"], "100")
+        self.assertEqual(state.data["line_items"], [])
 
-    async def test_transfer_finalize_requires_uploaded_photo(self) -> None:
+    async def test_act_razbora_finalize_allows_empty_nomenclature_without_photo(self) -> None:
         user = make_user()
         callback_message = FakeMessage(from_user=user)
-        callback = FakeCallback(data="transfer:photos_done", from_user=user, message=callback_message)
+        callback = FakeCallback(data="act_razbora:items_done", from_user=user, message=callback_message)
         state = FakeState(
             {
-                "line_items": [{"product_name": "Suv", "quantity": "10"}],
-                "photos": [],
+                "branch": "Geofizika",
+                "branch_id": 1,
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "line_items": [],
             }
         )
         request_service = FakeRequestService()
 
-        await transfer_finalize(callback, state, FakeDB(), request_service)
+        await act_razbora_finalize(callback, state, FakeDB(), request_service)
 
-        self.assertEqual(len(request_service.calls), 0)
-        self.assertEqual(len(callback_message.answers), 1)
-        self.assertEqual(callback_message.answers[0]["text"], t("upload_photo_or_finish", "uz"))
-        self.assertEqual(len(callback.answers), 1)
+        self.assertEqual(len(request_service.calls), 1)
+        request_payload = request_service.calls[0]
+        self.assertEqual(request_payload["operation_type"], "act_razbora")
+        self.assertEqual(request_payload["product_name"], "Qo'y go'shti")
+        self.assertEqual(request_payload["quantity"], "100")
+        self.assertEqual(request_payload["line_items"], [])
+        self.assertEqual(request_payload["photos"], [])
+        self.assertTrue(state.cleared)
 
-    async def test_transfer_failure_still_returns_request_id(self) -> None:
+    async def test_act_razbora_nomenclature_quantity_must_not_exceed_total(self) -> None:
         user = make_user()
-        callback_message = FakeMessage(from_user=user)
-        callback = FakeCallback(data="transfer:photos_done", from_user=user, message=callback_message)
+        message = FakeMessage(text="20", from_user=user)
         state = FakeState(
             {
-                "branch": "Geofizika",
-                "warehouse": "Без склада",
-                "transfer_type": "branch",
-                "line_items": [{"product_name": "Suv", "quantity": "10"}],
-                "photos": [{"telegram_file_id": "file-1"}],
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "current_nomenclature_name": "Kabob uchun",
+                "line_items": [{"product_name": "Qiyma uchun", "quantity": "90"}],
             }
         )
 
-        await transfer_finalize(callback, state, FakeDB(), FailingRequestService())
+        await act_razbora_nomenclature_quantity(message, state, FakeDB())
+
+        self.assertIsNone(state.current_state)
+        self.assertEqual(state.data["line_items"], [{"product_name": "Qiyma uchun", "quantity": "90"}])
+        self.assertEqual(message.answers[0]["text"], t("act_razbora_quantity_exceeded", "uz", total="100"))
+
+    async def test_act_razbora_nomenclature_quantity_adds_valid_item(self) -> None:
+        user = make_user()
+        message = FakeMessage(text="20", from_user=user)
+        state = FakeState(
+            {
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "current_nomenclature_name": "Qiyma uchun",
+                "line_items": [],
+            }
+        )
+
+        await act_razbora_nomenclature_quantity(message, state, FakeDB())
+
+        self.assertIs(state.current_state, ActRazboraStates.confirming_items)
+        self.assertEqual(state.data["line_items"], [{"product_name": "Qiyma uchun", "quantity": "20"}])
+        self.assertIn("Qiyma uchun: 20 kg", message.answers[0]["text"])
+
+    async def test_act_razbora_failure_still_returns_request_id(self) -> None:
+        user = make_user()
+        callback_message = FakeMessage(from_user=user)
+        callback = FakeCallback(data="act_razbora:items_done", from_user=user, message=callback_message)
+        state = FakeState(
+            {
+                "branch": "Geofizika",
+                "branch_id": 1,
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "line_items": [{"product_name": "Qiyma uchun", "quantity": "20"}],
+            }
+        )
+
+        await act_razbora_finalize(callback, state, FakeDB(), FailingRequestService())
 
         self.assertTrue(state.cleared)
         self.assertIn("ID: 91", callback_message.answers[0]["text"])

@@ -22,7 +22,7 @@ async def get_users(
 async def get_requests(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
-    operation_type: str | None = Query(default=None, pattern="^(arrival|transfer)$"),
+    operation_type: str | None = Query(default=None, pattern="^(arrival|act_razbora)$"),
     db: Database = Depends(get_db),
 ) -> list[RequestOut]:
     return await db.list_requests(limit=limit, offset=offset, operation_type=operation_type)

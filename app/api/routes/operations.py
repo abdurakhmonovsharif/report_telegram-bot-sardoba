@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1/operations", tags=["operations"], dependencie
 
 OPERATION_TYPE_LABELS = {
     "arrival": "Приход",
-    "transfer": "Перемещение",
+    "act_razbora": "Акт разбора",
 }
 
 STATUS_LABELS = {
@@ -30,12 +30,6 @@ NOTIFICATION_STATUS_LABELS = {
     "sent": "Отправлено",
     "failed": "Не отправлено",
 }
-
-TRANSFER_TYPE_LABELS = {
-    "warehouse": "Между складами",
-    "branch": "Между филиалами",
-}
-
 
 def _extract_line_items(row: dict[str, Any]) -> list[dict[str, str]]:
     raw_items = row.get("line_items") or []
@@ -97,7 +91,6 @@ async def _list_operations(
     search: str | None = None,
     branch_id: int | None = None,
     warehouse_id: int | None = None,
-    transfer_type: str | None = None,
     user_id: int | None = None,
     user_query: str | None = None,
     product_name: str | None = None,
@@ -115,7 +108,6 @@ async def _list_operations(
             "search": search,
             "branch_id": branch_id,
             "warehouse_id": warehouse_id,
-            "transfer_type": transfer_type,
             "user_id": user_id,
             "user_query": user_query,
             "product_name": product_name,
@@ -137,7 +129,6 @@ async def list_operations(
     search: str | None = Query(default=None),
     branch_id: int | None = Query(default=None, ge=1),
     warehouse_id: int | None = Query(default=None, ge=1),
-    transfer_type: str | None = Query(default=None, pattern="^(warehouse|branch)$"),
     user_id: int | None = Query(default=None, ge=1),
     user_query: str | None = Query(default=None),
     product_name: str | None = Query(default=None),
@@ -154,7 +145,6 @@ async def list_operations(
         search=search,
         branch_id=branch_id,
         warehouse_id=warehouse_id,
-        transfer_type=transfer_type,
         user_id=user_id,
         user_query=user_query,
         product_name=product_name,
@@ -172,7 +162,6 @@ async def list_arrivals(
     search: str | None = Query(default=None),
     branch_id: int | None = Query(default=None, ge=1),
     warehouse_id: int | None = Query(default=None, ge=1),
-    transfer_type: str | None = Query(default=None, pattern="^(warehouse|branch)$"),
     user_id: int | None = Query(default=None, ge=1),
     user_query: str | None = Query(default=None),
     product_name: str | None = Query(default=None),
@@ -190,7 +179,6 @@ async def list_arrivals(
         search=search,
         branch_id=branch_id,
         warehouse_id=warehouse_id,
-        transfer_type=transfer_type,
         user_id=user_id,
         user_query=user_query,
         product_name=product_name,
@@ -201,14 +189,13 @@ async def list_arrivals(
     )
 
 
-@router.get("/transfers")
-async def list_transfers(
+@router.get("/act-razbora")
+async def list_act_razbora(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=200),
     search: str | None = Query(default=None),
     branch_id: int | None = Query(default=None, ge=1),
     warehouse_id: int | None = Query(default=None, ge=1),
-    transfer_type: str | None = Query(default=None, pattern="^(warehouse|branch)$"),
     user_id: int | None = Query(default=None, ge=1),
     user_query: str | None = Query(default=None),
     product_name: str | None = Query(default=None),
@@ -222,11 +209,10 @@ async def list_transfers(
         db=db,
         page=page,
         page_size=page_size,
-        operation_type="transfer",
+        operation_type="act_razbora",
         search=search,
         branch_id=branch_id,
         warehouse_id=warehouse_id,
-        transfer_type=transfer_type,
         user_id=user_id,
         user_query=user_query,
         product_name=product_name,
@@ -239,11 +225,10 @@ async def list_transfers(
 
 @router.get("/export")
 async def export_operations(
-    mode: str = Query(default="all", pattern="^(all|arrival|transfer)$"),
+    mode: str = Query(default="all", pattern="^(all|arrival|act_razbora)$"),
     search: str | None = Query(default=None),
     branch_id: int | None = Query(default=None, ge=1),
     warehouse_id: int | None = Query(default=None, ge=1),
-    transfer_type: str | None = Query(default=None, pattern="^(warehouse|branch)$"),
     user_id: int | None = Query(default=None, ge=1),
     user_query: str | None = Query(default=None),
     product_name: str | None = Query(default=None),
@@ -261,7 +246,6 @@ async def export_operations(
             "search": search,
             "branch_id": branch_id,
             "warehouse_id": warehouse_id,
-            "transfer_type": transfer_type,
             "user_id": user_id,
             "user_query": user_query,
             "product_name": product_name,
@@ -282,10 +266,6 @@ async def export_operations(
             normalized.get("notification_status"),
             "Неизвестно",
         )
-        normalized["transfer_type"] = TRANSFER_TYPE_LABELS.get(
-            normalized.get("transfer_type"),
-            "Не указано",
-        )
         normalized_rows.append(normalized)
     return excel_response(
         filename=f"operations-{mode}.xlsx",
@@ -293,15 +273,10 @@ async def export_operations(
             ("Идентификатор", "id"),
             ("Код", "code"),
             ("Тип", "operation_type"),
-            ("Вид перемещения", "transfer_type"),
             ("Статус", "status"),
             ("Статус уведомления", "notification_status"),
             ("Филиал", "branch_name"),
             ("Склад", "warehouse_name"),
-            ("Источник филиал", "source_branch_name"),
-            ("Источник склад", "source_warehouse_name"),
-            ("Получатель филиал", "destination_branch_name"),
-            ("Получатель склад", "destination_warehouse_name"),
             ("Номенклатура", "line_items_summary"),
             ("Продукт", "product_name"),
             ("Количество", "quantity"),

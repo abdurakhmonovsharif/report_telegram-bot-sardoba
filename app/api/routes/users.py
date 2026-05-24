@@ -92,7 +92,7 @@ async def export_users(
             ("Последний визит", "last_seen_at"),
             ("Операции", "operations_total"),
             ("Приходы", "arrivals_total"),
-            ("Перемещения", "transfers_total"),
+            ("Акты разбора", "transfers_total"),
             ("Изображения", "images_total"),
         ],
         rows=rows,
@@ -113,7 +113,7 @@ async def user_operations(
     user_id: int = Path(..., ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=200),
-    operation_type: str | None = Query(default=None, pattern="^(arrival|transfer)$"),
+    operation_type: str | None = Query(default=None, pattern="^(arrival|act_razbora)$"),
     db: Database = Depends(get_db),
 ) -> dict:
     service = AdminService(db)

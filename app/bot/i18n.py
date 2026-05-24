@@ -56,25 +56,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Приход",
         "en": "Arrival",
     },
-    "transfer": {
-        "uz": "Ko'chirish (Перемещение)",
-        "ru": "Перемещение",
-        "en": "Transfer",
-    },
-    "select_transfer_kind": {
-        "uz": "Ko'chirish turini tanlang:",
-        "ru": "Выберите тип перемещения:",
-        "en": "Select transfer type:",
-    },
-    "transfer_kind_internal": {
-        "uz": "Omborlar orasida",
-        "ru": "Между складами",
-        "en": "Internal transfer",
-    },
-    "transfer_kind_branch": {
-        "uz": "Filiallar orasida",
-        "ru": "Между филиалами",
-        "en": "Between branches",
+    "act_razbora": {
+        "uz": "Akt razbora",
+        "ru": "Акт разбора",
+        "en": "Act razbora",
     },
     "change_language": {
         "uz": "Tilni o'zgartirish",
@@ -86,45 +71,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Выберите филиал:",
         "en": "Select a branch:",
     },
-    "select_source_branch": {
-        "uz": "Yuboruvchi filialni tanlang:",
-        "ru": "Выберите филиал-отправитель:",
-        "en": "Select source branch:",
-    },
-    "select_destination_branch": {
-        "uz": "Qaysi filialga ko'chirilayotganini tanlang:",
-        "ru": "Выберите филиал-получатель:",
-        "en": "Select destination branch:",
-    },
     "select_warehouse": {
         "uz": "Omborni tanlang:",
         "ru": "Выберите склад:",
         "en": "Select a warehouse:",
     },
-    "select_source_warehouse": {
-        "uz": "Qaysi ombordan ko'chirilayotganini tanlang:",
-        "ru": "Выберите склад-источник:",
-        "en": "Select source warehouse:",
-    },
-    "select_destination_warehouse": {
-        "uz": "Qaysi omborga ko'chirilayotganini tanlang:",
-        "ru": "Выберите склад-получатель:",
-        "en": "Select destination warehouse:",
-    },
     "no_active_warehouses": {
         "uz": "Hozircha faol omborlar mavjud emas.",
         "ru": "Сейчас нет активных складов.",
         "en": "There are no active warehouses right now.",
-    },
-    "same_branch_error": {
-        "uz": "Manba va qabul qiluvchi filial bir xil bo'lishi mumkin emas.",
-        "ru": "Филиал-источник и филиал-получатель не могут совпадать.",
-        "en": "Source and destination branches must be different.",
-    },
-    "same_warehouse_error": {
-        "uz": "Manba va qabul qiluvchi ombor bir xil bo'lishi mumkin emas.",
-        "ru": "Склад-источник и склад-получатель не могут совпадать.",
-        "en": "Source and destination warehouses must be different.",
     },
     "product_name_prompt": {
         "uz": "Mahsulot nomini kiriting:",
@@ -156,10 +111,40 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Добавленные товары:\n{items}\n\nДобавить еще товар или продолжить?",
         "en": "Added products:\n{items}\n\nDo you want to add another product or continue?",
     },
-    "transfer_items_prompt": {
-        "uz": "Kiritilgan mahsulotlar:\n{items}\n\nYana mahsulot qo'shasizmi yoki davom etasizmi?",
-        "ru": "Добавленные товары:\n{items}\n\nДобавить еще товар или продолжить?",
-        "en": "Added products:\n{items}\n\nDo you want to add another product or continue?",
+    "act_razbora_product_prompt": {
+        "uz": "Asosiy mahsulot nomini kiriting. Namuna: Qo'y go'shti",
+        "ru": "Введите основной продукт. Пример: Qo'y go'shti",
+        "en": "Enter the main product. Example: Qo'y go'shti",
+    },
+    "act_razbora_total_quantity_prompt": {
+        "uz": "Jami kg ni kiriting. Namuna: 100",
+        "ru": "Введите общий вес в кг. Пример: 100",
+        "en": "Enter total kg. Example: 100",
+    },
+    "act_razbora_nomenclature_name_prompt": {
+        "uz": "Nomenklatura nomini kiriting. Namuna: Qiyma uchun",
+        "ru": "Введите номенклатуру. Пример: Qiyma uchun",
+        "en": "Enter nomenclature name. Example: Qiyma uchun",
+    },
+    "act_razbora_nomenclature_quantity_prompt": {
+        "uz": "Ushbu nomenklatura uchun kg ni kiriting. Namuna: 20",
+        "ru": "Введите кг для этой номенклатуры. Пример: 20",
+        "en": "Enter kg for this nomenclature. Example: 20",
+    },
+    "act_razbora_no_nomenclature": {
+        "uz": "Hali nomenklatura kiritilmagan.",
+        "ru": "Номенклатура пока не добавлена.",
+        "en": "No nomenclature has been added yet.",
+    },
+    "act_razbora_items_prompt": {
+        "uz": "Asosiy mahsulot: {product}\nJami: {quantity} kg\n\nNomenklatura:\n{items}\n\nNomenklatura qo'shasizmi yoki yakunlaysizmi?",
+        "ru": "Основной продукт: {product}\nИтого: {quantity} кг\n\nНоменклатура:\n{items}\n\nДобавить номенклатуру или завершить?",
+        "en": "Main product: {product}\nTotal: {quantity} kg\n\nNomenclature:\n{items}\n\nAdd nomenclature or finish?",
+    },
+    "act_razbora_quantity_exceeded": {
+        "uz": "Nomenklatura jami asosiy {total} kg dan oshmasligi kerak.",
+        "ru": "Сумма номенклатуры не должна превышать общий вес {total} кг.",
+        "en": "Nomenclature total must not exceed the main total of {total} kg.",
     },
     "arrival_add_more": {
         "uz": "Yana qo'shish",
@@ -220,16 +205,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "uz": "Sana noto'g'ri. Format: YYYY-MM-DD",
         "ru": "Неверный формат даты. Используйте YYYY-MM-DD",
         "en": "Invalid date format. Use YYYY-MM-DD",
-    },
-    "comment_prompt": {
-        "uz": "Ko'chirilgan mahsulotlar haqida izoh yozing:",
-        "ru": "Введите комментарий о перемещенных товарах:",
-        "en": "Write a comment about moved products:",
-    },
-    "transfer_photo_prompt": {
-        "uz": "Rasm yuboring. Kamida 1 ta rasm majburiy. Yuklab bo'lgach tugmani bosing.",
-        "ru": "Отправьте фото. Минимум 1 фото обязательно. После загрузки нажмите завершить.",
-        "en": "Upload photos. At least 1 photo is required. Press finish after uploading.",
     },
     "skip_photos": {
         "uz": "Rasmsiz davom etish",

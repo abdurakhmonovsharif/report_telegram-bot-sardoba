@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS warehouses (
 CREATE TABLE IF NOT EXISTS requests (
     id BIGSERIAL PRIMARY KEY,
     code TEXT UNIQUE,
-    operation_type TEXT NOT NULL CHECK (operation_type IN ('arrival', 'transfer')),
+    operation_type TEXT NOT NULL CHECK (operation_type IN ('arrival', 'act_razbora')),
     branch TEXT NOT NULL,
     warehouse TEXT NOT NULL,
     branch_id BIGINT REFERENCES branches (id) ON DELETE SET NULL,

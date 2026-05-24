@@ -19,14 +19,10 @@ class ArrivalStates(StatesGroup):
     waiting_comment = State()
 
 
-class TransferStates(StatesGroup):
-    selecting_transfer_kind = State()
-    selecting_source_branch = State()
+class ActRazboraStates(StatesGroup):
     selecting_branch = State()
-    selecting_source_warehouse = State()
-    selecting_warehouse = State()
     waiting_product_name = State()
-    waiting_quantity = State()
+    waiting_total_quantity = State()
+    waiting_nomenclature_name = State()
+    waiting_nomenclature_quantity = State()
     confirming_items = State()
-    waiting_comment = State()
-    collecting_optional_photos = State()

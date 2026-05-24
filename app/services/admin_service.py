@@ -203,7 +203,7 @@ class AdminService:
                 u.last_seen_at,
                 COUNT(r.id)::INT AS operations_total,
                 COUNT(r.id) FILTER (WHERE r.operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(r.id) FILTER (WHERE r.operation_type = 'transfer')::INT AS transfers_total,
+                COUNT(r.id) FILTER (WHERE r.operation_type = 'act_razbora')::INT AS transfers_total,
                 COUNT(rp.id)::INT AS images_total
             FROM users u
             LEFT JOIN requests r ON r.user_id = u.id
@@ -244,7 +244,7 @@ class AdminService:
                 u.last_seen_at,
                 COUNT(r.id)::INT AS operations_total,
                 COUNT(r.id) FILTER (WHERE r.operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(r.id) FILTER (WHERE r.operation_type = 'transfer')::INT AS transfers_total,
+                COUNT(r.id) FILTER (WHERE r.operation_type = 'act_razbora')::INT AS transfers_total,
                 COUNT(rp.id)::INT AS images_total
             FROM users u
             LEFT JOIN requests r ON r.user_id = u.id
@@ -279,7 +279,7 @@ class AdminService:
                 u.last_seen_at,
                 COUNT(r.id)::INT AS operations_total,
                 COUNT(r.id) FILTER (WHERE r.operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(r.id) FILTER (WHERE r.operation_type = 'transfer')::INT AS transfers_total,
+                COUNT(r.id) FILTER (WHERE r.operation_type = 'act_razbora')::INT AS transfers_total,
                 COUNT(rp.id)::INT AS images_total
             FROM users u
             LEFT JOIN requests r ON r.user_id = u.id
@@ -839,7 +839,7 @@ class AdminService:
                 b.updated_at,
                 COUNT(r.id)::INT AS operations_total,
                 COUNT(r.id) FILTER (WHERE r.operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(r.id) FILTER (WHERE r.operation_type = 'transfer')::INT AS transfers_total
+                COUNT(r.id) FILTER (WHERE r.operation_type = 'act_razbora')::INT AS transfers_total
             FROM branches b
             LEFT JOIN requests r ON r.branch_id = b.id
             WHERE b.id = $1
@@ -875,7 +875,7 @@ class AdminService:
                 (SELECT COUNT(*)::INT FROM users) AS total_users,
                 (SELECT COUNT(*)::INT FROM users WHERE last_seen_at::DATE = CURRENT_DATE) AS today_active_users,
                 (SELECT COUNT(*)::INT FROM requests WHERE operation_type = 'arrival') AS total_arrivals,
-                (SELECT COUNT(*)::INT FROM requests WHERE operation_type = 'transfer') AS total_transfers,
+                (SELECT COUNT(*)::INT FROM requests WHERE operation_type = 'act_razbora') AS total_transfers,
                 (SELECT COUNT(*)::INT FROM requests WHERE created_at::DATE = CURRENT_DATE) AS today_operations,
                 (SELECT COUNT(*)::INT FROM request_photos) AS total_images,
                 (SELECT COUNT(*)::INT FROM requests WHERE EXISTS (SELECT 1 FROM request_photos rp WHERE rp.request_id = requests.id)) AS operations_with_images
@@ -890,7 +890,7 @@ class AdminService:
                 COALESCE(b.admin_name, r.branch) AS branch_name,
                 COUNT(*)::INT AS operations_total,
                 COUNT(*) FILTER (WHERE r.operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(*) FILTER (WHERE r.operation_type = 'transfer')::INT AS transfers_total
+                COUNT(*) FILTER (WHERE r.operation_type = 'act_razbora')::INT AS transfers_total
             FROM requests r
             LEFT JOIN branches b ON b.id = r.branch_id
             GROUP BY COALESCE(b.admin_name, r.branch)
@@ -905,7 +905,7 @@ class AdminService:
                 COALESCE(w.name, r.warehouse) AS warehouse_name,
                 COUNT(*)::INT AS operations_total,
                 COUNT(*) FILTER (WHERE r.operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(*) FILTER (WHERE r.operation_type = 'transfer')::INT AS transfers_total
+                COUNT(*) FILTER (WHERE r.operation_type = 'act_razbora')::INT AS transfers_total
             FROM requests r
             LEFT JOIN warehouses w ON w.id = r.warehouse_id
             GROUP BY COALESCE(w.name, r.warehouse)
@@ -923,7 +923,7 @@ class AdminService:
                 u.avatar_file_id,
                 COUNT(r.id)::INT AS operations_total,
                 COUNT(r.id) FILTER (WHERE r.operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(r.id) FILTER (WHERE r.operation_type = 'transfer')::INT AS transfers_total
+                COUNT(r.id) FILTER (WHERE r.operation_type = 'act_razbora')::INT AS transfers_total
             FROM users u
             JOIN requests r ON r.user_id = u.id
             GROUP BY u.id
@@ -977,7 +977,7 @@ class AdminService:
                 TO_CHAR(DATE_TRUNC('{safe_period}', created_at), 'YYYY-MM-DD') AS period_label,
                 COUNT(*)::INT AS operations_total,
                 COUNT(*) FILTER (WHERE operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(*) FILTER (WHERE operation_type = 'transfer')::INT AS transfers_total
+                COUNT(*) FILTER (WHERE operation_type = 'act_razbora')::INT AS transfers_total
             FROM requests
             WHERE created_at >= NOW() - ($1::INT || ' days')::INTERVAL
             GROUP BY DATE_TRUNC('{safe_period}', created_at)
@@ -993,7 +993,7 @@ class AdminService:
                 product_name,
                 COUNT(*)::INT AS operations_total,
                 COUNT(*) FILTER (WHERE operation_type = 'arrival')::INT AS arrivals_total,
-                COUNT(*) FILTER (WHERE operation_type = 'transfer')::INT AS transfers_total
+                COUNT(*) FILTER (WHERE operation_type = 'act_razbora')::INT AS transfers_total
             FROM requests
             WHERE COALESCE(product_name, '') <> ''
             GROUP BY product_name

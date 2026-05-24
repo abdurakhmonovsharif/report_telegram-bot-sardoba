@@ -8,7 +8,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats
 
-from app.bot.handlers import arrival, menu, start, transfer
+from app.bot.handlers import act_razbora, arrival, menu, start
 from app.bot.middlewares.error_middleware import ErrorLoggingMiddleware
 from app.config import get_settings
 from app.db.database import Database
@@ -24,7 +24,7 @@ def build_dispatcher() -> Dispatcher:
     dispatcher.include_router(start.router)
     dispatcher.include_router(menu.router)
     dispatcher.include_router(arrival.router)
-    dispatcher.include_router(transfer.router)
+    dispatcher.include_router(act_razbora.router)
     return dispatcher
 
 

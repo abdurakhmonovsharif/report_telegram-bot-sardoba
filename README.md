@@ -14,14 +14,14 @@ Telegram bot + FastAPI backend + Material UI admin panel for warehouse operation
 ## What is included
 
 - Telegram bot with mandatory phone share on first start
-- two bot flows: `Приход` and `Перемещение`
+- two bot flows: `Приход` and `Акт разбора`
 - static seeded branches
 - four static warehouses with per-warehouse Telegram notification routing
 - rich operation model: product, quantity, info text, comment, photos, supplier, date
 - operation notification status: `sent` / `failed`
 - admin authentication with login/password and JWT
 - Russian-only admin UI
-- dashboard, users, operations, arrivals, transfers, warehouses, branches, analytics, audit, profile pages
+- dashboard, users, operations, arrivals, act razbora, warehouses, branches, analytics, audit, profile pages
 - CSV export for users, operations, and audit logs
 - audit trail for bot/admin/system actions
 - media preview endpoints for operation photos and user avatars
@@ -174,6 +174,6 @@ If `frontend/dist` exists, FastAPI serves the admin panel at:
 - Telegram users are upserted by `telegram_id`, so duplicates are not created on re-entry.
 - Bot photos are stored as Telegram file ids + metadata in `request_photos`.
 - User avatar is fetched from Telegram profile photos when possible and exposed through backend media endpoints.
-- Operations receive unique codes like `PRI-YYYYMMDD-000001` and `PER-YYYYMMDD-000001`.
+- Operations receive unique codes like `PRI-YYYYMMDD-000001` and `AKT-YYYYMMDD-000001`.
 - Each operation stores `notification_status`, while Telegram delivery failures are preserved in audit/system logs and do not roll back the saved operation.
 - Dashboard/analytics cards in the frontend are backed by real backend endpoints, no mock data is used.

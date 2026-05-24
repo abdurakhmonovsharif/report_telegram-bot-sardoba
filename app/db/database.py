@@ -46,7 +46,7 @@ def _normalize_request_line_items(line_items: list[dict[str, Any]] | None) -> li
 
 
 def _request_code(*, operation_type: str, request_id: int, created_at: datetime | None) -> str:
-    prefix = "PRI" if operation_type == "arrival" else "PER"
+    prefix = "PRI" if operation_type == "arrival" else "AKT"
     ts = (created_at or datetime.now(timezone.utc)).strftime("%Y%m%d")
     return f"{prefix}-{ts}-{request_id:06d}"
 
@@ -905,7 +905,7 @@ class Database:
                 (SELECT COUNT(*) FROM users) AS users_total,
                 (SELECT COUNT(*) FROM requests) AS requests_total,
                 (SELECT COUNT(*) FROM requests WHERE operation_type = 'arrival') AS arrivals_total,
-                (SELECT COUNT(*) FROM requests WHERE operation_type = 'transfer') AS transfers_total,
+                (SELECT COUNT(*) FROM requests WHERE operation_type = 'act_razbora') AS transfers_total,
                 (SELECT COUNT(*) FROM system_logs WHERE level = 'ERROR') AS errors_total,
                 (
                     SELECT COUNT(*)

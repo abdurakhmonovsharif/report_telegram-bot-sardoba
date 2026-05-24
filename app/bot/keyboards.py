@@ -23,7 +23,7 @@ def language_keyboard() -> InlineKeyboardMarkup:
 def main_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t("arrival", lang), callback_data="menu:arrival")
-    builder.button(text=t("transfer", lang), callback_data="menu:transfer")
+    builder.button(text=t("act_razbora", lang), callback_data="menu:act_razbora")
     builder.button(text=t("change_language", lang), callback_data="menu:language")
     builder.adjust(1)
     return builder.as_markup()
@@ -68,16 +68,6 @@ def warehouse_keyboard(
     return builder.as_markup()
 
 
-def transfer_kind_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text=t("transfer_kind_internal", lang), callback_data="transfer:kind:warehouse")
-    builder.button(text=t("transfer_kind_branch", lang), callback_data="transfer:kind:branch")
-    if back_callback:
-        builder.button(text=t("back", lang), callback_data=back_callback)
-    builder.adjust(1)
-    return builder.as_markup()
-
-
 def arrival_photo_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t("finish_upload", lang), callback_data="arrival:photos_done")
@@ -97,22 +87,13 @@ def arrival_items_keyboard(lang: str, *, back_callback: str | None = None) -> In
     return builder.as_markup()
 
 
-def transfer_items_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
+def act_razbora_items_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=t("arrival_add_more", lang), callback_data="transfer:add_more")
-    builder.button(text=t("arrival_continue", lang), callback_data="transfer:items_done")
+    builder.button(text=t("arrival_add_more", lang), callback_data="act_razbora:add_more")
+    builder.button(text=t("arrival_continue", lang), callback_data="act_razbora:items_done")
     if back_callback:
         builder.button(text=t("back", lang), callback_data=back_callback)
     builder.adjust(2, 1)
-    return builder.as_markup()
-
-
-def transfer_photo_keyboard(lang: str, *, back_callback: str | None = None) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text=t("finish_upload", lang), callback_data="transfer:photos_done")
-    if back_callback:
-        builder.button(text=t("back", lang), callback_data=back_callback)
-    builder.adjust(1)
     return builder.as_markup()
 
 
