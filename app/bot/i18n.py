@@ -57,12 +57,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Arrival",
     },
     "act_razbora": {
-        "uz": "Akt razbora",
+        "uz": "Ajratish akti (Акт разбора)",
         "ru": "Акт разбора",
         "en": "Act razbora",
     },
     "change_language": {
-        "uz": "Tilni o'zgartirish",
+        "uz": "Tilni o‘zgartirish",
         "ru": "Сменить язык",
         "en": "Change language",
     },
