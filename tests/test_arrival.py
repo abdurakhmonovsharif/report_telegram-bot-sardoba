@@ -12,6 +12,7 @@ from app.bot.handlers.arrival import (
     arrival_unit_price,
 )
 from app.bot.handlers.act_razbora import (
+    act_razbora_date,
     act_razbora_finalize,
     act_razbora_nomenclature_quantity,
     act_razbora_product_name,
@@ -423,7 +424,7 @@ class ActRazboraFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(state.data["quantity"], "100")
         self.assertEqual(state.data["line_items"], [])
 
-    async def test_act_razbora_finalize_allows_empty_nomenclature_without_photo(self) -> None:
+    async def test_act_razbora_finalize_asks_for_manual_date(self) -> None:
         user = make_user()
         callback_message = FakeMessage(from_user=user)
         callback = FakeCallback(data="act_razbora:items_done", from_user=user, message=callback_message)
@@ -441,14 +442,80 @@ class ActRazboraFlowTests(unittest.IsolatedAsyncioTestCase):
 
         await act_razbora_finalize(callback, state, FakeDB(), request_service)
 
+        self.assertEqual(len(request_service.calls), 0)
+        self.assertIs(state.current_state, ActRazboraStates.waiting_date)
+        self.assertEqual(callback_message.answers[0]["text"], t("date_prompt", "uz"))
+
+    async def test_act_razbora_date_shows_finish_button_without_submitting(self) -> None:
+        user = make_user()
+        message = FakeMessage(text="2026-03-18", from_user=user)
+        state = FakeState(
+            {
+                "branch": "Geofizika",
+                "branch_id": 1,
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "line_items": [],
+            }
+        )
+
+        await act_razbora_date(message, state, FakeDB())
+
+        self.assertIs(state.current_state, ActRazboraStates.confirming_items)
+        self.assertEqual(state.data["request_date"], date(2026, 3, 18))
+        markup = message.answers[0]["reply_markup"]
+        self.assertEqual(markup.inline_keyboard[0][1].text, t("act_razbora_finish", "uz"))
+
+    async def test_act_razbora_finalize_submits_manual_date_without_photo(self) -> None:
+        user = make_user()
+        callback_message = FakeMessage(from_user=user)
+        callback = FakeCallback(data="act_razbora:items_done", from_user=user, message=callback_message)
+        state = FakeState(
+            {
+                "branch": "Geofizika",
+                "branch_id": 1,
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "request_date": date(2026, 3, 18),
+                "line_items": [],
+            }
+        )
+        request_service = FakeRequestService()
+
+        await act_razbora_finalize(callback, state, FakeDB(), request_service)
+
         self.assertEqual(len(request_service.calls), 1)
         request_payload = request_service.calls[0]
         self.assertEqual(request_payload["operation_type"], "act_razbora")
         self.assertEqual(request_payload["product_name"], "Qo'y go'shti")
         self.assertEqual(request_payload["quantity"], "100")
+        self.assertEqual(request_payload["request_date"], date(2026, 3, 18))
         self.assertEqual(request_payload["line_items"], [])
         self.assertEqual(request_payload["photos"], [])
         self.assertTrue(state.cleared)
+
+    async def test_act_razbora_date_rejects_invalid_date(self) -> None:
+        user = make_user()
+        message = FakeMessage(text="18/03/2026", from_user=user)
+        state = FakeState(
+            {
+                "branch": "Geofizika",
+                "branch_id": 1,
+                "warehouse": "Без склада",
+                "product_name": "Qo'y go'shti",
+                "quantity": "100",
+                "line_items": [],
+            }
+        )
+        request_service = FakeRequestService()
+
+        await act_razbora_date(message, state, FakeDB())
+
+        self.assertEqual(len(request_service.calls), 0)
+        self.assertEqual(message.answers[0]["text"], t("date_invalid", "uz"))
+        self.assertFalse(state.cleared)
 
     async def test_act_razbora_nomenclature_quantity_must_not_exceed_total(self) -> None:
         user = make_user()
@@ -468,7 +535,7 @@ class ActRazboraFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(state.data["line_items"], [{"product_name": "Qiyma uchun", "quantity": "90"}])
         self.assertEqual(message.answers[0]["text"], t("act_razbora_quantity_exceeded", "uz", total="100"))
 
-    async def test_act_razbora_nomenclature_quantity_adds_valid_item(self) -> None:
+    async def test_act_razbora_nomenclature_quantity_asks_for_date_after_valid_item(self) -> None:
         user = make_user()
         message = FakeMessage(text="20", from_user=user)
         state = FakeState(
@@ -482,9 +549,9 @@ class ActRazboraFlowTests(unittest.IsolatedAsyncioTestCase):
 
         await act_razbora_nomenclature_quantity(message, state, FakeDB())
 
-        self.assertIs(state.current_state, ActRazboraStates.confirming_items)
+        self.assertIs(state.current_state, ActRazboraStates.waiting_date)
         self.assertEqual(state.data["line_items"], [{"product_name": "Qiyma uchun", "quantity": "20"}])
-        self.assertIn("Qiyma uchun: 20 kg", message.answers[0]["text"])
+        self.assertEqual(message.answers[0]["text"], t("date_prompt", "uz"))
 
     async def test_act_razbora_failure_still_returns_request_id(self) -> None:
         user = make_user()
@@ -497,6 +564,7 @@ class ActRazboraFlowTests(unittest.IsolatedAsyncioTestCase):
                 "warehouse": "Без склада",
                 "product_name": "Qo'y go'shti",
                 "quantity": "100",
+                "request_date": date(2026, 3, 18),
                 "line_items": [{"product_name": "Qiyma uchun", "quantity": "20"}],
             }
         )

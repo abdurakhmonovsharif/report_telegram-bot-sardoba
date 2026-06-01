@@ -26,3 +26,4 @@ class ActRazboraStates(StatesGroup):
     waiting_nomenclature_name = State()
     waiting_nomenclature_quantity = State()
     confirming_items = State()
+    waiting_date = State()

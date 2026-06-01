@@ -12,6 +12,7 @@ from app.bot.handlers.common import (
     format_numeric_value,
     get_user_language,
     is_valid_numeric_value,
+    parse_iso_date,
 )
 from app.bot.i18n import t
 from app.bot.keyboards import (
@@ -111,6 +112,57 @@ async def _show_items_prompt(
     )
 
 
+async def _submit_act_razbora(
+    *,
+    state: FSMContext,
+    db: Database,
+    request_service: RequestService,
+    from_user,
+    reply: Message,
+) -> None:
+    lang = await get_user_language(db, from_user)
+    data = await state.get_data()
+    product_name = _normalize_field(data.get("product_name"))
+    quantity = _normalize_field(data.get("quantity"))
+
+    if not product_name:
+        await state.set_state(ActRazboraStates.waiting_product_name)
+        await reply.answer(t("act_razbora_product_prompt", lang))
+        return
+    if not quantity:
+        await state.set_state(ActRazboraStates.waiting_total_quantity)
+        await reply.answer(t("act_razbora_total_quantity_prompt", lang))
+        return
+
+    try:
+        request_record = await request_service.finalize_request(
+            telegram_user_id=from_user.id,
+            telegram_user_name=from_user.full_name or str(from_user.id),
+            operation_type="act_razbora",
+            branch=data["branch"],
+            warehouse=data.get("warehouse") or ACT_RAZBORA_WAREHOUSE_PLACEHOLDER,
+            branch_id=data.get("branch_id"),
+            warehouse_id=None,
+            request_date=data.get("request_date"),
+            product_name=product_name,
+            quantity=quantity,
+            line_items=_get_nomenclature_items(data),
+            photos=[],
+        )
+    except ReportDeliveryError as exc:
+        await state.clear()
+        await reply.answer(t("request_saved_but_not_sent", lang, request_id=exc.request_id))
+        await reply.answer(t("start_prompt", lang), reply_markup=start_entry_keyboard(lang))
+        return
+    except Exception:
+        await reply.answer(t("safe_error", lang))
+        return
+
+    await state.clear()
+    await reply.answer(t("request_success", lang, request_id=request_record["id"]))
+    await reply.answer(t("start_prompt", lang), reply_markup=start_entry_keyboard(lang))
+
+
 @router.callback_query(ActRazboraStates.selecting_branch, F.data.startswith("act_razbora:branch:"))
 async def act_razbora_select_branch(
     callback: CallbackQuery,
@@ -140,6 +192,7 @@ async def act_razbora_select_branch(
         current_nomenclature_name=None,
         current_nomenclature_quantity=None,
         line_items=[],
+        request_date=None,
     )
     await state.set_state(ActRazboraStates.waiting_product_name)
 
@@ -235,8 +288,13 @@ async def act_razbora_nomenclature_quantity(message: Message, state: FSMContext,
         current_nomenclature_name=None,
         current_nomenclature_quantity=None,
     )
-    await state.set_state(ActRazboraStates.confirming_items)
-    await _show_items_prompt(reply=message, state=state, lang=lang)
+    if data.get("request_date"):
+        await state.set_state(ActRazboraStates.confirming_items)
+        await _show_items_prompt(reply=message, state=state, lang=lang)
+        return
+
+    await state.set_state(ActRazboraStates.waiting_date)
+    await message.answer(t("date_prompt", lang))
 
 
 @router.callback_query(ActRazboraStates.confirming_items, F.data == "act_razbora:items_done")
@@ -265,40 +323,41 @@ async def act_razbora_finalize(
         await callback.answer()
         return
 
-    try:
-        request_record = await request_service.finalize_request(
-            telegram_user_id=callback.from_user.id,
-            telegram_user_name=callback.from_user.full_name or str(callback.from_user.id),
-            operation_type="act_razbora",
-            branch=data["branch"],
-            warehouse=data.get("warehouse") or ACT_RAZBORA_WAREHOUSE_PLACEHOLDER,
-            branch_id=data.get("branch_id"),
-            warehouse_id=None,
-            product_name=product_name,
-            quantity=quantity,
-            line_items=_get_nomenclature_items(data),
-            photos=[],
-        )
-    except ReportDeliveryError as exc:
-        await state.clear()
+    if not data.get("request_date"):
+        await state.set_state(ActRazboraStates.waiting_date)
         if callback.message:
             await clear_inline_keyboard(callback)
-            await callback.message.answer(t("request_saved_but_not_sent", lang, request_id=exc.request_id))
-            await callback.message.answer(t("start_prompt", lang), reply_markup=start_entry_keyboard(lang))
-        await callback.answer()
-        return
-    except Exception:
-        if callback.message:
-            await callback.message.answer(t("safe_error", lang))
+            await callback.message.answer(t("date_prompt", lang))
         await callback.answer()
         return
 
-    await state.clear()
     if callback.message:
         await clear_inline_keyboard(callback)
-        await callback.message.answer(t("request_success", lang, request_id=request_record["id"]))
-        await callback.message.answer(t("start_prompt", lang), reply_markup=start_entry_keyboard(lang))
+        await _submit_act_razbora(
+            state=state,
+            db=db,
+            request_service=request_service,
+            from_user=callback.from_user,
+            reply=callback.message,
+        )
     await callback.answer()
+
+
+@router.message(ActRazboraStates.waiting_date, F.text)
+async def act_razbora_date(
+    message: Message,
+    state: FSMContext,
+    db: Database,
+) -> None:
+    lang = await get_user_language(db, message.from_user)
+    parsed_date = parse_iso_date(message.text)
+    if parsed_date is None:
+        await message.answer(t("date_invalid", lang))
+        return
+
+    await state.update_data(request_date=parsed_date)
+    await state.set_state(ActRazboraStates.confirming_items)
+    await _show_items_prompt(reply=message, state=state, lang=lang)
 
 
 @router.callback_query(ActRazboraStates.confirming_items, F.data == "act_razbora:back:nomenclature_quantity")
@@ -360,6 +419,12 @@ async def act_razbora_nomenclature_name_only(message: Message, db: Database) -> 
 async def act_razbora_nomenclature_quantity_only(message: Message, db: Database) -> None:
     lang = await get_user_language(db, message.from_user)
     await message.answer(t("act_razbora_nomenclature_quantity_prompt", lang))
+
+
+@router.message(ActRazboraStates.waiting_date)
+async def act_razbora_date_text_required(message: Message, db: Database) -> None:
+    lang = await get_user_language(db, message.from_user)
+    await message.answer(t("date_prompt", lang))
 
 
 @router.message(ActRazboraStates.confirming_items)
