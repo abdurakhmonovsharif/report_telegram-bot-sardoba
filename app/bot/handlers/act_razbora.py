@@ -288,13 +288,8 @@ async def act_razbora_nomenclature_quantity(message: Message, state: FSMContext,
         current_nomenclature_name=None,
         current_nomenclature_quantity=None,
     )
-    if data.get("request_date"):
-        await state.set_state(ActRazboraStates.confirming_items)
-        await _show_items_prompt(reply=message, state=state, lang=lang)
-        return
-
-    await state.set_state(ActRazboraStates.waiting_date)
-    await message.answer(t("date_prompt", lang))
+    await state.set_state(ActRazboraStates.confirming_items)
+    await _show_items_prompt(reply=message, state=state, lang=lang)
 
 
 @router.callback_query(ActRazboraStates.confirming_items, F.data == "act_razbora:items_done")
@@ -348,6 +343,7 @@ async def act_razbora_date(
     message: Message,
     state: FSMContext,
     db: Database,
+    request_service: RequestService,
 ) -> None:
     lang = await get_user_language(db, message.from_user)
     parsed_date = parse_iso_date(message.text)
@@ -356,8 +352,13 @@ async def act_razbora_date(
         return
 
     await state.update_data(request_date=parsed_date)
-    await state.set_state(ActRazboraStates.confirming_items)
-    await _show_items_prompt(reply=message, state=state, lang=lang)
+    await _submit_act_razbora(
+        state=state,
+        db=db,
+        request_service=request_service,
+        from_user=message.from_user,
+        reply=message,
+    )
 
 
 @router.callback_query(ActRazboraStates.confirming_items, F.data == "act_razbora:back:nomenclature_quantity")
